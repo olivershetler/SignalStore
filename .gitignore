@@ -7,8 +7,8 @@ data/
 *.xlsx
 
 # permanent data directories to ignore
-data/internal
-data/output
+data/internal/
+data/output/
 
 # virtual environments
 env/
