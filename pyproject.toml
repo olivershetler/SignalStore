@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "neuroscikit-backend"
+name = "signal-store"
 version = "0.0.1"
 dependencies = [
     "dependency_injector", # for dependency injection
