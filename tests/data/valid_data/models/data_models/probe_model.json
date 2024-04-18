@@ -1,0 +1,37 @@
+{
+    "schema_name": "probe",
+    "schema_title": "Probe",
+    "schema_description": "A probe refers to a single channel array.",
+    "schema_type": "data_model",
+    "metamodel_ref": "record_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["probe"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": false
+            },
+            "probe_type": {},
+            "probe_description": {},
+            "probe_manufacturer": {},
+            "probe_serial_number": {},
+            "probe_version": {},
+            "probe_implant_coordinates": {},
+            "probe_implant_angle": {},
+            "probe_implant_coordinates_unit": {},
+            "probe_implant_angle_unit": {},
+            "probe_notes": {},
+            "time_of_removal": {},
+            "time_of_save": {}
+        },
+        "required": ["schema_ref", "data_name", "probe_type", "probe_description", "probe_manufacturer", "probe_model"],
+        "additionalProperties": true
+    }
+}

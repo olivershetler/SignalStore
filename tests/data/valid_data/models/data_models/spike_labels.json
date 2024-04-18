@@ -1,0 +1,59 @@
+{
+    "schema_name": "spike_labels",
+    "schema_title": "Spike Labels",
+    "schema_description": "Labels for spike sorting. They are of shape (n_spikes,) and contain the cluster label for each spike.",
+    "schema_type": "data_model",
+    "metamodel_ref": "xarray_dataarray_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["spike_labels"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": true
+            },
+            "data_dimensions": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["spike_idx", "probe"]
+                }
+            },
+            "shape": {},
+            "unit_of_measure": {},
+            "dimension_of_measure": {
+                "type": "string",
+                "enum": ["[nominal]"]
+            },
+            "session_data_ref": {},
+            "animal_data_ref": {},
+            "probe_data_ref": {},
+            "cluster_label": {},
+            "clustering_procedure_ref": {},
+            "notes": {},
+            "time_of_save": {},
+            "time_of_removal": {}
+            },
+        "required": ["schema_ref", "data_name", "data_dimensions", "has_file", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref"],
+        "additionalProperties": true,
+        "allOf":[
+            {
+                "if": {
+                    "anyOf": [
+                        {"required": ["cluster_label"]},
+                        {"required": ["clustering_procedure_ref"]}
+                    ]
+                },
+                "then": {
+                    "required": ["cluster_label", "clustering_procedure_ref"]
+                }
+            }
+        ]
+    }
+}

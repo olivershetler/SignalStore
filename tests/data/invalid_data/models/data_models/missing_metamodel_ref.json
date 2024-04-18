@@ -1,0 +1,57 @@
+{
+    "schema_name": "missing_metamodel_ref",
+    "schema_title": "Animal",
+    "schema_description": "An animal refers to a single subject.",
+    "schema_type": "data_model",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["animal"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": false
+            },
+            "sex": {},
+            "species": {},
+            "strain": {},
+            "genotype": {},
+            "age": {},
+            "age_unit": {},
+            "weight": {},
+            "weight_unit": {},
+            "notes": {}
+        },
+        "required": ["schema_ref", "data_name"],
+        "additionalProperties": false,
+        "allOf": [
+            {
+                "if": {
+                    "anyOf": [
+                        {"required": ["age"]},
+                        {"required": ["age_unit"]}
+                    ]
+                },
+                "then": {
+                    "required": ["age", "age_unit"]
+                }
+            },
+            {
+                "if": {
+                    "anyOf": [
+                        {"required": ["weight"]},
+                        {"required": ["weight_unit"]}
+                    ]
+                },
+                "then": {
+                    "required": ["weight", "weight_unit"]
+                }
+            }
+        ]
+    }
+}

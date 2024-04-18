@@ -1,0 +1,18 @@
+{
+    "schema_name": "record_metamodel",
+    "schema_title": "Standalone Record Metamodel THIS METAMODEL IS INCOMPLETE JSON SCHEMA WILL APPROVE ANYTHING",
+    "schema_description": "A standalone record metamodel is a metamodel for how to describe a standalone record. A standalone record is a record that does not have any associated data. All standalone records have the schema_ref and data_name properties along with any other properties defined in a given model. The schema_ref property for a given model must match the same value as the schema_name property of the model.",
+    "schema_type": "metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_name": {},
+            "schema_title": {},
+            "schema_description": {},
+            "schema_type": {
+                "const": "data_model"
+            },
+            "json_schema": {}
+        }
+    }
+}

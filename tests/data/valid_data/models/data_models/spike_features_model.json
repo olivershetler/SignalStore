@@ -1,0 +1,60 @@
+{
+    "schema_name": "spike_features",
+    "schema_title": "Spike Features",
+    "schema_description": "Spike features refers to the features of spikes in a recording.",
+    "schema_type": "data_model",
+    "metamodel_ref": "xarray_dataarray_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["spike_features"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": true
+            },
+            "data_dimensions": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["spike", "probe", "feature"]
+                }
+            },
+            "shape": {},
+            "unit_of_measure": {},
+            "dimension_of_measure": {
+                "type": "string",
+                "enum": ["[dimensionless]"]
+            },
+            "session_data_ref": {},
+            "animal_data_ref": {},
+            "probe_data_ref": {},
+            "cluster_label": {},
+            "clustering_procedure_ref": {},
+            "feature_extraction_procedure_ref": {},
+            "time_of_save": {},
+            "time_of_removal": {},
+            "notes": {}
+        },
+        "required": ["schema_ref", "data_name", "has_file", "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref", "feature_extraction_procedure_ref"],
+        "additionalProperties": true,
+        "allOf": [
+            {
+                "if": {
+                    "anyOf": [
+                        {"required": ["cluster_label"]},
+                        {"required": ["clustering_procedure_ref"]}
+                    ]
+                },
+                "then": {
+                    "required": ["cluster_label", "clustering_procedure_ref"]
+                }
+            }
+        ]
+    }
+}

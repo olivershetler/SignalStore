@@ -1,0 +1,259 @@
+[
+{
+    "schema_ref": "xarray",
+    "schema_description": "...",
+    "json_schema": {
+        "type": "object",
+        "properties":{
+            "schema_ref": {},
+            "name": {},
+            "data_dimensions": {}
+        },
+        "required": ["schema_ref", "name", "data_dimensions"],
+        "additionalProperties": true
+    }
+},
+{
+    "schema_ref": "data_record",
+    "schema_description": "A record of a measurement",
+    "json_schema": {
+        "type": "object",
+        "allOf": [
+            {
+                "_schema_ref": "base_record"
+            },
+            {
+                "_schema_ref": "xarray"
+            },
+            {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "is_acquisition": { "const": true },
+                            "acquisition_description": { "type": "string" },
+                            "acquisition_brand": { "type": "string" },
+                            "acquisition_settings_name": { "type": "string" }
+                        },
+                        "required": ["is_acquisition", "acquisition_description", "acquisition_brand", "acquisition_settings_name"],
+                        "additionalProperties": true
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "is_acquisition": { "const": false },
+                            "creation_report_key": { "type": "string" }
+                        },
+                        "required": ["is_acquisition", "creation_report"],
+                        "additionalProperties": true
+                    }
+                ]
+            }
+        ]
+    }
+},
+{
+    "schema_ref": "pure_record",
+    "schema_description": "A record of a measurement",
+    "json_schema": {
+        "type": "object",
+        "allOf": [
+            {
+                "_schema_ref": "base_record"
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "has_file": { "const": false }
+                },
+                "required": ["has_file"]
+            }
+        ]
+    }
+},
+{
+    "schema_ref": "session",
+    "schema_description": "A record of a recording session, where multiple data recordings may have been taken. A session includes metadata about the session such as the date, time, duration, foriegn keys to records of things used and notes.",
+    "json_schema": {
+        "allOf": [
+            {"schema_ref": "pure_record"},
+            {
+                "type": "object",
+                "properties": {
+                    "animal_data_ref": {
+                        "type": "string"
+                    },
+                    "session_date": {
+                        "type": "string"
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "session_duration": {
+                        "type": "string"
+                    },
+                    "session_notes": {
+                        "type": "string"
+                    }
+                },
+                "required": ["session_date", "start_time", "session_duration"]
+            }
+        ]
+    }
+},
+{
+    "schema_ref": "animal",
+    "schema_description": "A record of an animal",
+    "json_schema": {
+        "allOf": [
+            {"schema_ref": "pure_record"},
+            {
+                "type": "object",
+                "properties": {
+                    "sex": {
+                        "type": "string"
+                    },
+                    "species": {
+                        "type": "string"
+                    },
+                    "strain": {
+                        "type": "string"
+                    },
+                    "genotype": {
+                        "type": "string"
+                    },
+                    "age": {
+                        "type": "numeric"
+                    },
+                    "age_unit": {
+                        "type": "string"
+                    },
+                    "weight": {
+                        "type": "numeric"
+                    },
+                    "weight_unit": {
+                        "type": "string"
+                    },
+                    "animal_notes": {
+                        "type": "string"
+                    }
+                },
+                "required": ["species", "strain"],
+                "if": {
+                    "oneOf": [
+                        {"properties": {"age": {"type": "numeric"}}},
+                        {"properties": {"age_unit": {"type": "string"}}}
+                    ]
+                },
+                "then": {
+                    "required": ["age", "age_unit"]
+                },
+                "if": {
+                    "oneOf": [
+                        {"properties": {"weight": {"type": "numeric"}}},
+                        {"properties": {"weight_unit": {"type": "string"}}}
+                    ]
+                },
+                "then": {
+                    "required": ["weight", "weight_unit"]
+                }
+            }
+        ]
+    }
+},
+{
+    "schema_ref": "spike_waveforms",
+    "schema_description": "A record of an xarray DataArray object",
+    "json_schema": {
+        "type": "object",
+        "allOf": [
+            {"_schema_ref": "data_record"},
+            {"type": "object",
+            "properties": {
+                "data_dimensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["time", "probe", "channel"]
+                    },
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "uniqueItems": true
+                },
+                "coordinates": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["time", "probe", "channel"]
+                },
+                "uniqueItems": true
+                },
+                "unit": {
+                    "type": "string"
+                },
+                "dimension_of_measure": {
+                    "type": "string",
+                    "const": "charge"
+                },
+                "animal_data_ref": {
+                    "type": "string"
+                },
+                "session_data_ref": {
+                    "type": "string"
+                }
+            },
+        "required": ["data_dimensions", "coordinates", "unit", "dimension_of_measure", "animal_data_ref", "session_data_ref"]
+            }
+        ]
+    }
+},
+{
+    "schema_ref": "mea_rec_recording",
+    "schema_description": "A record that provides metadata and foriegn keys to the data records of a recording made with a mea_rec recording system.",
+    "json_schema": {
+        "type": "object",
+        "allOf": [
+            {"_schema_ref": "base_record"},
+            {"type": "object",
+            "properties": {
+                "sampling_rate": {
+                    "type": "numeric"
+                },
+                "num_frames": {
+                    "type": "numeric"
+                },
+                "num_channels": {
+                    "type": "numeric"
+                },
+                "nb_block": {
+                    "type": "numeric"
+                },
+                "nb_segment": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "signal_streams_name": {
+                    "type": "string"
+                },
+                "signal_channels_name": {
+                    "type": "string"
+                },
+                "spike_channels_name": {
+                    "type": "string"
+                },
+                "event_channels_name": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+        "required": ["sampling_rate", "num_frames", "num_channels", "animal_data_ref", "session_data_ref"]
+            }
+        ]
+    }
+}
+
+]

@@ -1,3 +1,10 @@
+env/
+.env/
+ENV/
+venv/
+.venv/
+VENV/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

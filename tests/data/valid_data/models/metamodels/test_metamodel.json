@@ -1,0 +1,18 @@
+{
+    "schema_name": "test_metamodel",
+    "schema_title": "Test Metamodel",
+    "schema_description": "This is a test metamodel that is as general as possible. It will approve any valid data model.",
+    "schema_type": "metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_name": {},
+            "schema_title": {},
+            "schema_description": {},
+            "schema_type": {
+                "const": "data_model"
+            },
+            "json_schema": {}
+        }
+    }
+}

@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuroscikit-backend"
+version = "0.0.1"
+dependencies = [
+    "dependency_injector", # for dependency injection
+    "jsonschema", # for validating data schemata
+    "numpy", # for in memory data arrays
+    "xarray", # for using data, datasets and metadata (universal internal data format)
+    "fsspec", # for loading data from remote sources and local files (abstract filesystem interface)
+    "gcsfs", # for loading data from google cloud storage with fsspec
+    "dask", # for parallelizing data processing and analysis
+    "scipy", # for reading and writing NetCDF files among other things
+    "netcdf4", # TODO: remove later
+    "h5netcdf", # TODO: remove later
+    "zarr", # for reading and writing zarr files directly
+    "bottleneck", # for fast array processing
+    "pint", # for SI unit conversion and management
+    "neo", # for manipulating electrophysiology data using packages that want neo objects
+    "pynwb", # for manipulating electrophysiology data using packages that want nwb objects
+    "docker", # for running docker container with MongoDB database for querying metadata
+    "pymongo", # for accessing mongodb in docker image
+    "statsmodels",
+    "openpyxl", # for reading excel project organzier files that store metadata
+    "opencv-python-headless",
+    "fastapi[all]==0.98.0", # for running entrypoint for the web interface
+    "spikeinterface[full]", # for spike feature extraction and sorting
+    "neo", # needed by spikeinterface
+    "MEArec", # needed by spikeinterface
+    #"pydantic>=1.8.0",
+	"pydantic",
+    "hypercorn==0.14.4",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "python-multipart",
+]
+
+authors = [
+    {name = "Oliver Shetler (principal architect, primary maintainer)", email = "cos2112@cumc.columbia.edu"},
+    {name = "David Vaughan (developer)"},
+    {name = "Abid Hussaini (lab Principal Investigator)"},
+]
+
+[tool.optional-dependencies]
+dev = [
+    "pytest",
+    "mongomock",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["data", "docs", "tests", "gui", "build", "*.egg-info", ".pytest_cache", ".githooks"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"').",
+    "serial",
+    "smoke: marks tests as minimal smoke tests meant for quick use during development."
+]

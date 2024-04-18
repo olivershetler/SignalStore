@@ -1,0 +1,10 @@
+{
+    "schema_name": "test",
+    "schema_title": "Test",
+    "schema_description": "Test schema. Will pass anything of the object type when used for validation.",
+    "schema_type": "data_model",
+    "metamodel_ref": "test_metamodel",
+    "json_schema": {
+        "type": "object"
+    }
+}

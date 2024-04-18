@@ -1,0 +1,31 @@
+{
+    "schema_name": "clustering_procedure",
+    "schema_title": "Clustering Procedure",
+    "schema_description": "A clustering procedure refers to the procedure used to cluster spikes.",
+    "schema_type": "data_model",
+    "metamodel_ref": "record_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["clustering_procedure"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": false
+            },
+            "clustering_procedure_description": {},
+            "clustering_procedure_software": {},
+            "clustering_procedure_version": {},
+            "clustering_procedure_notes": {},
+            "time_of_removal": {},
+            "time_of_save": {}
+        },
+        "required": ["schema_ref", "data_name", "clustering_procedure_description", "clustering_procedure_software"],
+        "additionalProperties": true
+    }
+}

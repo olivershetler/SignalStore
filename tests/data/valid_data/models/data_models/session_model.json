@@ -1,0 +1,32 @@
+{
+    "schema_name": "session",
+    "schema_title": "Recording Session",
+    "schema_description": "A recording session refers to a period of time when an electrophysiology recording is made from one or more subjects.",
+    "schema_type": "data_model",
+    "metamodel_ref": "record_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["session"]
+            },
+            "data_name": {},
+            "version_timestamp": {
+                "const": null
+            },
+            "has_file": {
+                "type": "boolean",
+                "enum": [false]
+            },
+            "session_date": {},
+            "start_time": {},
+            "duration": {},
+            "session_description": {},
+            "animal_data_refs": {},
+            "notes": {}
+        },
+        "required": ["schema_ref", "data_name", "session_date", "start_time", "duration", "session_description"],
+        "additionalProperties": true
+    }
+}

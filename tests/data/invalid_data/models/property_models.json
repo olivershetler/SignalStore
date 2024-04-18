@@ -1,0 +1,25 @@
+[
+    {
+        "schema_name": "right_index_wrong_keys",
+        "schema_babbel": "Right Index, Wrong Keys",
+        "schema_descrbbtion": "A JSON Schema Model with right index but wrong key names",
+        "schema_typel": "metamodel",
+        "json_scma": {
+            "type": "object"
+        }
+    },
+    {
+        "schema_name": "data_model_without_metaschema_ref",
+        "schema_title": "Data Model without Metaschema Ref",
+        "schema_description": "An otherwise valid JSON Schema Model of type 'data_model' without a reference to the Metaschema",
+        "schema_type": "data_model",
+        "json_schema": {
+            "type": "object",
+            "properties": {
+                "schema_ref": {},
+                "data_name": {}
+                },
+            "required": ["schema_ref","data_name"]
+        }
+    }
+]

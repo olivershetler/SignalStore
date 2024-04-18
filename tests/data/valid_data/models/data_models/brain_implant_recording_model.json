@@ -1,0 +1,62 @@
+{
+    "schema_name": "brain_implant_recording",
+    "schema_title": "Brain Implant Recording",
+    "schema_description": "Brain implant recording refers to the raw data recorded from an implant or a simulation of such data.",
+    "schema_type": "data_model",
+    "metamodel_ref": "xarray_dataarray_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["raw_implant_recording"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": true
+            },
+            "data_dimensions": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["time", "channel"]
+                }
+            },
+            "sampling_rate": {},
+            "num_frames": {},
+            "num_channels": {},
+            "nb_block": {},
+            "nb_segment": {
+                "type": "array",
+                "items": {
+                    "type": "integer"
+                }
+            },
+            "signal_streams_name": {},
+            "signal_channels_name": {},
+            "spike_channels_name": {},
+            "event_channels_name": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "unit_of_measure": {},
+            "dimension_of_measure": {
+                "type": "string",
+                "enum": ["voltage"]
+            },
+            "session_data_ref": {},
+            "animal_data_ref": {},
+            "probe_data_ref": {},
+            "notes": {},
+            "time_of_removal": {},
+            "time_of_save": {}
+        },
+        "required": ["schema_ref", "data_name", "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref"],
+        "additionalProperties": true
+    }
+}

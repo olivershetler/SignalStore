@@ -1,0 +1,10 @@
+{
+    "schema_name": "numpy_test",
+    "schema_title": "Numpy Test Schema",
+    "schema_description": "numpy test schema",
+    "schema_type": "data_model",
+    "metamodel_ref": "test_metamodel",
+    "json_schema": {
+        "type": "object"
+    }
+}

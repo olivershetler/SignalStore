@@ -1,0 +1,70 @@
+{
+    "schema_name": "spike_waveforms",
+    "schema_title": "Spike Waveforms",
+    "schema_description": "Spike waveforms refers to the waveforms of spikes in a recording.",
+    "schema_type": "data_model",
+    "metamodel_ref": "xarray_dataarray_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["spike_waveforms"]
+            },
+            "data_name": {},
+            "version_timestamp": {
+                "type": ["string", "null"],
+                "if": {
+                    "type": "string"
+                },
+                "then": {
+                    "format": "date-time"
+                }
+            },
+            "has_file": {
+                "type": "boolean",
+                "enum": [true]
+            },
+            "data_dimensions": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["spike_idx", "probe", "channel", "time"]
+                }
+            },
+            "shape": {},
+            "unit_of_measure": {
+                "type": "string",
+                "enum": ["microvolts"]
+            },
+            "dimension_of_measure": {
+                "type": "string",
+                "enum": ["[charge]"]
+            },
+            "sampling_rate": {},
+            "session_data_ref": {},
+            "animal_data_ref": {},
+            "probe_data_ref": {},
+            "cluster_label": {},
+            "clustering_procedure_ref": {},
+            "notes": {},
+            "time_of_save": {},
+            "time_of_removal": {}
+            },
+        "required": ["schema_ref", "data_name", "has_file", "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref"],
+        "additionalProperties": true,
+        "allOf":[
+            {
+                "if": {
+                    "anyOf": [
+                        {"required": ["cluster_label"]},
+                        {"required": ["clustering_procedure_ref"]}
+                    ]
+                },
+                "then": {
+                    "required": ["cluster_label", "clustering_procedure_ref"]
+                }
+            }
+        ]
+    }
+}

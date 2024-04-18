@@ -1,0 +1,18 @@
+{
+    "schema_name": "xarray_dataarray_metamodel",
+    "schema_title": "Xarray DataArray Metamodel THIS METAMODEL IS INCOMPLETE JSON SCHEMA WILL APPROVE ANYTHING",
+    "schema_description": "A xarray dataarray metamodel is a metamodel for how to describe a xarray dataarray. A xarray dataarray is a dataarray that is associated with a xarray dataset. All xarray dataarrays have the schema_ref and data_name properties along with any other properties defined in a given model. The schema_ref property for a given model must match the same value as the schema_name property of the model.",
+    "schema_type": "metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_name": {},
+            "schema_title": {},
+            "schema_description": {},
+            "schema_type": {
+                "const": "data_model"
+            },
+            "json_schema": {}
+        }
+    }
+}
