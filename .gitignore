@@ -1,3 +1,11 @@
+
+# Data to ignore (for now)
+data/
+*.nc
+*.csv
+*.xlsx
+
+# virtual environments
 env/
 .env/
 ENV/
