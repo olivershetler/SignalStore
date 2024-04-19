@@ -62,8 +62,7 @@
       "schema_description": "A data name is a string that is equal to the data_name of a data object. It is used to identify a data object in conjunction with a schema_ref.",
       "schema_type": "property_model",
       "json_schema": {
-        "type": "string",
-        "pattern": "^(?!.*(__|time_of_removal))[a-zA-Z0-9_]+$"
+        "type": "string"
       }
     },
     {
@@ -147,7 +146,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})$"
+        "pattern": "^([0-9]{4}[0-9]{2}[0-9]{2})$"
       }
     },
     {
@@ -157,7 +156,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})$"
+        "pattern": "^([0-9]{4}[0-9]{2}[0-9]{2})$"
       }
     },
     {
@@ -218,7 +217,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})$"
+        "pattern": "^([0-9]{4}[0-9]{2}[0-9]{2})$"
       }
     },
     {
@@ -292,8 +291,15 @@
       "schema_description": "The duration of a timeseries object or a referenced event (such as a recording session). This is a string that is equal to the duration of the data object.",
       "schema_type": "property_model",
       "json_schema": {
-        "type": "string",
-        "pattern": "^([0-9]{2}:[0-9]{2}:[0-9]{2})$"
+        "type": "string"
+        }
+    },
+    {"schema_name": "duration_unit",
+    "schema_title": "Duration Unit",
+    "schema_description": "The SI unit of the duration of a timeseries object or a referenced event (such as a recording session). This is a string that is equal to the duration_unit of the data object.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
       }
     },
     {"schema_name": "animal_species",
@@ -303,5 +309,182 @@
     "json_schema": {
       "type": "string"
       }
+    },
+    {"schema_name": "age",
+    "schema_title": "Age",
+    "schema_description": "The age of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "age_unit",
+    "schema_title": "Age Unit",
+    "schema_description": "The unit of age of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "age_lower_bound",
+    "schema_title": "Age Lower Bound",
+    "schema_description": "The lower bound of the age of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "age_upper_bound",
+    "schema_title": "Age Upper Bound",
+    "schema_description": "The upper bound of the age of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "animal_id",
+    "schema_title": "Animal ID",
+    "schema_description": "The ID of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "tetrode_id",
+    "schema_title": "Tetrode ID",
+    "schema_description": "The ID of the tetrode that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "tetrode_depth",
+    "schema_title": "Tetrode Depth",
+    "schema_description": "The depth of the tetrode that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "genotype",
+    "schema_title": "Genotype",
+    "schema_description": "The genotype of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "animal_strain",
+    "schema_title": "Animal strain",
+    "schema_description": "The strain of the animal that was recorded from.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "stimulus_type",
+    "schema_title": "Stimulus Type",
+    "schema_description": "The type of stimulus that was presented to the animal.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "stimulus_id",
+    "schema_title": "Stimulus ID",
+    "schema_description": "The ID of the stimulus that was presented to the animal.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "stimulus_description",
+    "schema_title": "Stimulus Description",
+    "schema_description": "A description of the stimulus that was presented to the animal.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    }, 
+    {"schema_name": "recording_length",
+    "schema_title": "Recording Length",
+    "schema_description": "The length of the recording.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "sample_rate",
+    "schema_title": "Sample Rate",
+    "schema_description": "The sample rate of the recording.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "arena_shape",
+    "schema_title": "Arena Shape",
+    "schema_description": "The shape of the arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name":"arena_description",
+    "schema_title":"Arena Description",
+    "schema_description":"A description of the arena.",
+    "schema_type":"property_model",
+    "json_schema":{
+      "type":"string"
+      }
+    },
+    {"schema_name": "study_description",
+    "schema_title": "Study Description",
+    "schema_description": "A description of the study.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "arena_height",
+    "schema_title": "Arena Height",
+    "schema_description": "The height of the arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "arena_width",
+    "schema_title": "Arena Width",
+    "schema_description": "The width of the arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "diameter",
+    "schema_title": "Diameter",
+    "schema_description": "The diameter of a circular arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "arena_side_length",
+    "schema_title": "Square Arena Side Length",
+    "schema_description": "The side length of a square arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "arena_radius",
+    "schema_title": "Circular Arena Radius",
+    "schema_description": "The radius of a circular arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
     }
   ]
+

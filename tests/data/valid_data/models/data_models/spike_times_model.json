@@ -22,7 +22,7 @@
                 "type": "array",
                 "items": {
                     "type": "string",
-                    "enum": ["spike_idx", "probe"]
+                    "enum": ["spike_idx", "1"]
                 }
             },
             "shape": {},

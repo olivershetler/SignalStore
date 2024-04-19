@@ -29,7 +29,7 @@
                 "type": "array",
                 "items": {
                     "type": "string",
-                    "enum": ["spike_idx", "probe", "channel", "time"]
+                    "enum": ["spike_idx", "channel", "sample"]
                 }
             },
             "shape": {},

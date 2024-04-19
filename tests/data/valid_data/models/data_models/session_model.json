@@ -21,12 +21,19 @@
             },
             "session_date": {},
             "start_time": {},
-            "duration": {},
+            "duration": {
+                "type": "string"
+            },
+            "duration_unit": {
+                "type": "string"
+            },
             "session_description": {},
             "animal_data_refs": {},
             "notes": {}
         },
-        "required": ["schema_ref", "data_name", "session_date", "start_time", "duration", "session_description"],
+        "required": ["schema_ref", "data_name", "session_date", "start_time", "duration"],
         "additionalProperties": true
     }
 }
+
+

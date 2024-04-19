@@ -9,7 +9,7 @@
         "properties": {
             "schema_ref": {
                 "type": "string",
-                "enum": ["spike_labels"]
+                "enum": ["spike_labels", "1"]
             },
             "data_name": {},
             "version": {
@@ -21,8 +21,7 @@
             "data_dimensions": {
                 "type": "array",
                 "items": {
-                    "type": "string",
-                    "enum": ["spike_idx", "probe"]
+                    "type": "string"
                 }
             },
             "shape": {},
