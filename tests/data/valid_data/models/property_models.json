@@ -259,17 +259,17 @@
         "properties": {
           "schema_ref": {
             "type": "string",
-            "pattern": "^(?!.*(__|time_of_removal))[a-zA-Z0-9_]+$"
+            "pattern": "^(?!.*(__|time_of_removal))[a-zA-Z0-9_/-]+$"
           },
           "data_name": {
             "type": "string",
-            "pattern": "^(?!.*(__|time_of_removal))[a-zA-Z0-9_]+$"
+            "pattern": "^(?!.*(__|time_of_removal))[a-zA-Z0-9_/-]+$"
           },
           "version_timestamp": {
             "type": "datetime"
           }
         },
-        "required": [
+        "required": [ 
           "schema_ref",
           "data_name"
         ]
@@ -481,6 +481,14 @@
     {"schema_name": "arena_radius",
     "schema_title": "Circular Arena Radius",
     "schema_description": "The radius of a circular arena.",
+    "schema_type": "property_model",
+    "json_schema": {
+      "type": "string"
+      }
+    },
+    {"schema_name": "spike_count",
+    "schema_title": "Spike Count",
+    "schema_description": "The number of spikes in a recording.",
     "schema_type": "property_model",
     "json_schema": {
       "type": "string"
