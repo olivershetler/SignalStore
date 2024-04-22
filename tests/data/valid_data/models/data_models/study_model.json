@@ -1,0 +1,29 @@
+{
+    "schema_name": "study",
+    "schema_title": "Study",
+    "schema_description": "A study is the overarching experiment that is conducted to investigate a specific research question.",
+    "schema_type": "data_model",
+    "metamodel_ref": "record_metamodel",
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "schema_ref": {
+                "type": "string",
+                "enum": ["study"]
+            },
+            "data_name": {},
+            "version": {
+                "const": null
+            },
+            "has_file": {
+                "const": false
+            },
+            "study_description": {},
+            "study_notes": {},
+            "time_of_removal": {},
+            "time_of_save": {}
+        },
+        "required": ["schema_ref", "data_name", "study_description"],
+        "additionalProperties": true
+    }
+}
