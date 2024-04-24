@@ -9,7 +9,7 @@ import fsspec
 from fsspec.implementations.local import LocalFileSystem
 from pathlib import Path
 
-from src.store.data_access_objects import (
+from signalstore.store.data_access_objects import (
     MongoDAO,
     FileSystemDAO,
     InMemoryObjectDAO,
@@ -17,21 +17,21 @@ from src.store.data_access_objects import (
     microseconds_to_datetime,
 )
 
-from src.store.repositories import (
+from signalstore.store.repositories import (
     DomainModelRepository, domain_model_json_schema,
     DataRepository,
     InMemoryObjectRepository,
 )
 
-from src.store.datafile_adapters import (
+from signalstore.store.datafile_adapters import (
     XarrayDataArrayNetCDFAdapter,
     XarrayDataArrayZarrAdapter,
     AbstractDataFileAdapter,
 )
 
-from src.store import UnitOfWorkProvider
+from signalstore.store import UnitOfWorkProvider
 
-from src.operations.helpers.abstract_helper import AbstractMutableHelper
+from signalstore.operations.helpers.abstract_helper import AbstractMutableHelper
 
 from datetime import datetime, timezone, timedelta
 

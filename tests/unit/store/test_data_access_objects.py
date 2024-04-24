@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
-from src.store.data_access_objects import *
+from signalstore.store.data_access_objects import *
 
 class TestDomainModelDAO:
 
