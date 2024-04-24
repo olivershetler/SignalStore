@@ -1,5 +1,5 @@
 from neo.rawio.mearecrawio import MEArecRawIO
-from signalstore.store.data_access_objects import DataArrayDAO, RecordDAO
+from signalstorestore.data_access_objects import DataArrayDAO, RecordDAO
 
 import numpy as np
 import xarray as xr

@@ -19,7 +19,7 @@
     "data_name": "test",
     "schema_ref": "spike_times",
     "has_file": true,
-    "data_dimensions": ["spike_idx", "probe"],
+    "data_dimensions": ["spike_idx", "1"],
     "shape": [100, 3],
     "dtype": "float64",
     "unit_of_measure": "seconds",

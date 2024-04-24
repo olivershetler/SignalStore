@@ -1,7 +1,7 @@
 from spikeinterface.extractors.neoextractors.neobaseextractor import NeoBaseRecordingExtractor, NeoBaseSortingExtractor
 from neo import rawio
-from signalstore.operations.helpers.neuroscikit_rawio import NeuroSciKitRawIO
-from signalstore.store.data_access_objects import DataArrayDAO, RecordDAO
+from signalstoreoperations.helpers.neuroscikit_rawio import NeuroSciKitRawIO
+from signalstorestore.data_access_objects import DataArrayDAO, RecordDAO
 
 
 # Because of how the NeoBaseRecordingExtractor works, our rawio class needs to be a member of the

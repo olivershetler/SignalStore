@@ -1,4 +1,4 @@
-from signalstore.operations.handlers.base_handler import BaseHandler, HandlerSuccessResponse, HandlerFailureResponse
+from signalstoreoperations.handlers.base_handler import BaseHandler, HandlerSuccessResponse, HandlerFailureResponse
 
 import json
 
