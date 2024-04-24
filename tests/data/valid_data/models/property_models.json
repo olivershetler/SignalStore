@@ -162,7 +162,7 @@
     {
       "schema_name": "acquisition_notes",
       "schema_title": "Acquisition Notes",
-      "schema_description": "Notes on the progeny of an acquisition. This field is usually automatically populated with an explanation of what the acquisition is by an import adapter within src.",
+      "schema_description": "Notes on the progeny of an acquisition. This field is usually automatically populated with an explanation of what the acquisition is by an import adapter within signalstore.",
       "schema_type": "property_model",
       "json_schema": {
         "type": "string"
@@ -217,7 +217,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{4}[0-9]{2}[0-9]{2})$"
+        "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})$"
       }
     },
     {
@@ -269,7 +269,7 @@
             "type": "datetime"
           }
         },
-        "required": [ 
+        "required": [
           "schema_ref",
           "data_name"
         ]
@@ -405,7 +405,7 @@
     "json_schema": {
       "type": "string"
       }
-    }, 
+    },
     {"schema_name": "recording_length",
     "schema_title": "Recording Length",
     "schema_description": "The length of the recording.",

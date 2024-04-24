@@ -429,8 +429,6 @@ class FileSystemDAO(AbstractDataAccessObject):
                     return None
         data_object = data_adapter.read_file(path)
         data_object = self._deserialize(data_object)
-        dims = data_object.attrs["data_dimensions"]
-        print(f"DIMS GOT: {dims}")
         return data_object
 
     def exists(self, schema_ref, data_name, version_timestamp=None, data_adapter=None):
@@ -668,7 +666,6 @@ class FileSystemDAO(AbstractDataAccessObject):
             if isinstance(value, list):
                 attrs[key] = np.array(value)
         data_object.attrs = attrs
-        print(f"SERIALIZED: {attrs}", flush=True)
         return data_object
 
     def _deserialize(self, data_object):

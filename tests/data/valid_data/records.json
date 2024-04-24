@@ -32,7 +32,7 @@
     "data_name": "test",
     "schema_ref": "spike_waveforms",
     "has_file": true,
-    "data_dimensions": ["spike_idx", "probe", "channel"],
+    "data_dimensions": ["spike_idx", "channel", "sample"],
     "shape": [100, 3, 5],
     "dtype": "float64",
     "unit_of_measure": "microvolts",

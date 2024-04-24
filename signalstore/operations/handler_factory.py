@@ -1,10 +1,10 @@
 import os
 import importlib.util
 
-from signalstoreoperations.handlers.base_handler import BaseHandler
+from signalstore.operations.handlers.base_handler import BaseHandler
 
 class HandlerFactory:
-    def __init__(self, uow_provider, base_path='signalstoreoperations.handlers', base_dir='src/operations/handlers'):
+    def __init__(self, uow_provider, base_path='signalstore.operations.handlers', base_dir='src/operations/handlers'):
         self._uow_provider = uow_provider
         self.base_path = base_path
         self.base_dir = base_dir
