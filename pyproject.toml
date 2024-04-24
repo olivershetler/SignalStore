@@ -11,6 +11,7 @@ dependencies = [
     "numpy", # for in memory data arrays
     "xarray", # for using data, datasets and metadata (universal internal data format)
     "fsspec", # for loading data from remote sources and local files (abstract filesystem interface)
+    "universal_pathlib", # for working with paths in a platform independent way
     "gcsfs", # for loading data from google cloud storage with fsspec
     "dask", # for parallelizing data processing and analysis
     "scipy", # for reading and writing NetCDF files among other things

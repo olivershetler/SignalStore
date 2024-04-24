@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 # The first column of spikes contains native channel names.  The second
 # column contains custom channel names.  The third column contains spike
 # timestamps.  The fourth column contains spike ID numbers (128 = likely
-# artifact due to amplitude exceeding threshold set in Spike Scope).  All 
+# artifact due to amplitude exceeding threshold set in Spike Scope).  All
 # normal spikes have a spike ID of 1.  Future versions of the RHX software
-# may support realtime spike sorting, and in this case spike ID will 
+# may support realtime spike sorting, and in this case spike ID will
 # denote different identified spikes (1, 2, 3, etc.).  If spike snapshots
 # were saved then they are contained in the fifth column.
 
@@ -72,7 +72,7 @@ def readIntanSpikeFile(option):
     customChannelList = readString(fid).split(",")
 
     sampleRate, = struct.unpack('<f', fid.read(4))
-    
+
     samplesPreDetect, = struct.unpack('<I', fid.read(4))
     samplesPostDetect, = struct.unpack('<I', fid.read(4))
     nSamples = samplesPreDetect + samplesPostDetect
@@ -125,7 +125,7 @@ def readIntanSpikeFile(option):
 
     # Close data file
     fid.close()
-    
+
     if snapshotsPresent:
         tSnapshot = [(sample - samplesPreDetect) / sampleRate for sample in range(nSamples)]
 

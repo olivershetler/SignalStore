@@ -2,7 +2,7 @@ from signalstore.operations.importers.adapters.abstract_read_adapter import Abst
 
 class AxonaReadAdapter(AbstractReadAdapter):
     def __init__(self, directory):
-        self.data_directory = Path(directory)
+        self.data_directory = UPath(directory)
         self.session_paths = self._assemble_session_paths()
 
     # has __iter__ and __next__ methods inherited from AbstractReadAdapter.
@@ -49,126 +49,126 @@ class AxonaReadAdapter(AbstractReadAdapter):
 
     def _assemble_session_paths(self):
         paths = {}
-        for path in self.data_directory.glob('*'):
+        for UPath in self.data_directory.glob('*'):
             try:
-                keys = self._path_key_tuple(path)
+                keys = self._path_key_tuple(UPath)
             except AxonaReaderFileExtensionError:
                 continue
             if keys[0] not in paths.keys():
                 paths[keys[0]] = {}
             if len(keys) == 2:
-                paths[keys[0]][keys[1]] = path
+                paths[keys[0]][keys[1]] = UPath
             elif len(keys) == 3:
                 if keys[1] not in paths[keys[0]].keys():
                     paths[keys[0]][keys[1]] = {}
-                paths[keys[0]][keys[1]][keys[2]] = path
+                paths[keys[0]][keys[1]][keys[2]] = UPath
         return paths
 
-    def _path_key_tuple(self, path):
-        if self._ispos(path):
-            return self._pos_session_key(path), 'pos'
-        elif self._isset(path):
-            return self._set_session_key(path), 'set'
-        elif self._iscut(path):
+    def _path_key_tuple(self, UPath):
+        if self._ispos(UPath):
+            return self._pos_session_key(UPath), 'pos'
+        elif self._isset(UPath):
+            return self._set_session_key(UPath), 'set'
+        elif self._iscut(UPath):
             return self._cut_session_key(
-                path), self._cut_tetrode_key(path), 'cut'
-        elif self._isclu(path):
+                UPath), self._cut_tetrode_key(UPath), 'cut'
+        elif self._isclu(UPath):
             return self._clu_session_key(
-                path), self._clu_tetrode_key(path), 'clu'
-        elif self._istet(path):
+                UPath), self._clu_tetrode_key(UPath), 'clu'
+        elif self._istet(UPath):
             return self._tet_session_key(
-                path), self._tet_tetrode_key(path), 'tet'
-        elif self._iseeg(path):
+                UPath), self._tet_tetrode_key(UPath), 'tet'
+        elif self._iseeg(UPath):
             return self._eeg_session_key(
-                path), self._eeg_tetrode_key(path), 'eeg'
-        elif self._isegf(path):
+                UPath), self._eeg_tetrode_key(UPath), 'eeg'
+        elif self._isegf(UPath):
             return self._egf_session_key(
-                path), self._egf_tetrode_key(path), 'egf'
+                UPath), self._egf_tetrode_key(UPath), 'egf'
         else:
             raise AxonaReaderFileExtensionError(
-                f'This file has an unsupported axona extension: {path}')
+                f'This file has an unsupported axona extension: {UPath}')
 
-    def _ispos(self, path):
-        return path.suffix == '.pos'
+    def _ispos(self, UPath):
+        return UPath.suffix == '.pos'
 
-    def _pos_session_key(self, path):
-        return path.stem
+    def _pos_session_key(self, UPath):
+        return UPath.stem
 
-    def _isset(self, path):
-        return path.suffix == '.set'
+    def _isset(self, UPath):
+        return UPath.suffix == '.set'
 
-    def _set_session_key(self, path):
-        return path.stem
+    def _set_session_key(self, UPath):
+        return UPath.stem
 
-    def _iscut(self, path):
-        return path.suffix == '.cut'
+    def _iscut(self, UPath):
+        return UPath.suffix == '.cut'
 
-    def _cut_session_key(self, path):
+    def _cut_session_key(self, UPath):
         # get the pathname before the last underscore
-        name = path.stem.split('_')[:-1]
+        name = UPath.stem.split('_')[:-1]
         if len(name) == 1:
             return name[0]
         elif len(name) > 1:
             return '_'.join(name)
         else:
             raise AxonaReaderFileExtensionError(
-                f'This .cut file has an invalid extension: {path}')
+                f'This .cut file has an invalid extension: {UPath}')
 
-    def _cut_tetrode_key(self, path):
+    def _cut_tetrode_key(self, UPath):
         # get the number after the last underscore but before the extension
-        return int(path.stem.split('_')[-1])
+        return int(UPath.stem.split('_')[-1])
 
-    def _isclu(self, path):
-        return Path(path.stem).suffix == '.clu'
+    def _isclu(self, UPath):
+        return UPath(UPath.stem).suffix == '.clu'
 
-    def _clu_session_key(self, path):
+    def _clu_session_key(self, UPath):
         # get the pathname before the last underscore
-        return Path(path.stem).stem
+        return UPath(UPath.stem).stem
 
-    def _clu_tetrode_key(self, path):
+    def _clu_tetrode_key(self, UPath):
         # get the number after the last underscore but before the extension
-        return int(path.suffix[1:])
+        return int(UPath.suffix[1:])
 
-    def _istet(self, path):
-        # check if the path extension is an integer
-        return path.suffix[1:].isnumeric()
+    def _istet(self, UPath):
+        # check if the UPath extension is an integer
+        return UPath.suffix[1:].isnumeric()
 
-    def _tet_session_key(self, path):
+    def _tet_session_key(self, UPath):
         # get the pathname before the last period
-        return path.stem
+        return UPath.stem
 
-    def _tet_tetrode_key(self, path):
-        return int(path.suffix[1:])
+    def _tet_tetrode_key(self, UPath):
+        return int(UPath.suffix[1:])
 
-    def _iseeg(self, path):
-        return path.suffix[:4] == '.eeg'
+    def _iseeg(self, UPath):
+        return UPath.suffix[:4] == '.eeg'
 
-    def _eeg_session_key(self, path):
-        return path.stem
+    def _eeg_session_key(self, UPath):
+        return UPath.stem
 
-    def _eeg_tetrode_key(self, path):
-        if path.suffix == '.eeg':
+    def _eeg_tetrode_key(self, UPath):
+        if UPath.suffix == '.eeg':
             return 1
-        elif path.suffix.replace('.eeg', '').isnumeric():
-            return int(path.suffix.replace('.eeg', ''))
+        elif UPath.suffix.replace('.eeg', '').isnumeric():
+            return int(UPath.suffix.replace('.eeg', ''))
         else:
             raise AxonaReaderFileExtensionError(
-                f'This .eeg* file has an invalid extension: {path}')
+                f'This .eeg* file has an invalid extension: {UPath}')
 
-    def _isegf(self, path):
-        return path.suffix[:4] == '.egf'
+    def _isegf(self, UPath):
+        return UPath.suffix[:4] == '.egf'
 
-    def _egf_session_key(self, path):
-        return path.stem
+    def _egf_session_key(self, UPath):
+        return UPath.stem
 
-    def _egf_tetrode_key(self, path):
-        if path.suffix == '.egf':
+    def _egf_tetrode_key(self, UPath):
+        if UPath.suffix == '.egf':
             return 1
-        elif path.suffix.replace('.egf', '').isnumeric():
-            return int(path.suffix.replace('.egf', ''))
+        elif UPath.suffix.replace('.egf', '').isnumeric():
+            return int(UPath.suffix.replace('.egf', ''))
         else:
             raise AxonaReaderFileExtensionError(
-                f'This .egf* file has an invalid extension: \n{path}')
+                f'This .egf* file has an invalid extension: \n{UPath}')
 
 
 class AxonaReaderFileExtensionError(ValueError):
@@ -188,14 +188,14 @@ import mmap
 # A+ Grade Dependencies
 import numpy as np
 import xarray as xr
-from pathlib import Path
+from upath import UPath
 
 # A Grade Dependencies
 
 # Other Dependencies
 
 
-def read_lfp_data_set(file_path: Path, session_key: str, tetrode_key: str):
+def read_lfp_data_set(file_path: UPath, session_key: str, tetrode_key: str):
     with open(file_path, 'rb') as eeg_or_egf_file:
         if 'eeg' in file_path.suffix:
             file_type = 'eeg'
@@ -432,14 +432,14 @@ def _rem_bad_track(x, y, t, threshold):
     for index in range(len(ind) - offset):
         if ind[index + 1] == ind[index] + 1:
             # A single sample position jump, tracker jumps out one sample and
-            # then jumps back to path on the next sample. Remove bad sample.
+            # then jumps back to UPath on the next sample. Remove bad sample.
             remInd.append(ind[index] + 1)
         else:
             ''' Not a single jump. 2 possibilities:
              1. TrackerMetadata jumps out, and stay out at the same place
              for several
              samples and then jumps back.
-             2. TrackerMetadata just has a small jump before path continues
+             2. TrackerMetadata just has a small jump before UPath continues
              as normal,
              unknown reason for this. In latter case the samples are left
              untouched'''
@@ -550,7 +550,7 @@ def _get_position(pos_fpath, ppm=None, method='', flip_y=True):
     _get_position function:
     ---------------------------------------------
     variables:
-    -pos_fpath: the full path (C:/example/session.pos)
+    -pos_fpath: the full UPath (C:/example/session.pos)
 
     output:
     t: column numpy array of the time stamps

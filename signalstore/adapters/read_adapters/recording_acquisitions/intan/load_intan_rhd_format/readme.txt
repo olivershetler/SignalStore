@@ -3,7 +3,7 @@ To use from the command-line, you should first make sure that Python 3 is instal
 If you're using Windows, open 'cmd.exe', type 'python' and press Enter. This should give you some basic information about your
 Python installation, including version number. This script is written to work with Python 3. You can then enter 'exit()' to return
 to the command line prompt. If instead you get a message like 'python is not recognized as an internal command', that indicates
-that either Python isn't installed on your machine, or it's not present in the PATH environment variable.
+that either Python isn't installed on your machine, or it's not present in the UPath environment variable.
 
 The default behavior of this script is to store the header information and data contained in the .rhd file in an object called 'a'.
 This can be changed in the 'load_intan_rhd_format.py' file. The structure of this object is specified in the 'data_to_result.py' file.

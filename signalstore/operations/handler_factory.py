@@ -16,7 +16,7 @@ class HandlerFactory:
         for root, dirs, files in os.walk(self.base_dir):
             for file in files:
                 if file.endswith('_handler.py') or file.endswith('_handlers.py'):
-                    module_path = os.path.join(root, file).replace("/", ".")[:-3]  # Convert path to module notation and remove .py
+                    module_path = os.path.join(root, file).replace("/", ".")[:-3]  # Convert UPath to module notation and remove .py
                     for name, obj in vars(importlib.import_module(module_path)).items():
                         if isinstance(obj, type) and issubclass(obj, BaseHandler) and obj != BaseHandler:
                             handlers[name] = obj

@@ -1,13 +1,13 @@
 import pytest
 import yaml
 import json
-import pathlib
+import upath
 import mongomock
 import xarray as xr
 import numpy as np
 import fsspec
 from fsspec.implementations.local import LocalFileSystem
-from pathlib import Path
+from upath import UPath
 
 from signalstore.store.data_access_objects import (
     MongoDAO,
@@ -66,8 +66,8 @@ def empty_client():
 # ==========================================================
 # ==========================================================
 
-test_data_path = pathlib.Path(__file__).parent / "data" / "valid_data"
-invalid_test_data_path = pathlib.Path(__file__).parent / "data" / "invalid_data"
+test_data_path = upath.UPath(__file__).parent / "data" / "valid_data"
+invalid_test_data_path = upath.UPath(__file__).parent / "data" / "invalid_data"
 
 # ===================
 # Model MongoDAO
@@ -470,15 +470,15 @@ class MockMutableModelHelper(AbstractMutableHelper):
 
 class MockMutableModelNumpyAdapter(AbstractDataFileAdapter):
 
-    def read_file(self, path):
-        with self.filesystem.open(path, mode='rb') as f:
-            idkwargs = self.path_to_id_kwargs(path)
+    def read_file(self, UPath):
+        with self.filesystem.open(UPath, mode='rb') as f:
+            idkwargs = self.path_to_id_kwargs(UPath)
             helper = MockMutableModelHelper(**idkwargs)
             helper.state = np.load(f)
         return helper
 
-    def write_file(self, path, data_object):
-        with self.filesystem.open(path, mode='wb') as f:
+    def write_file(self, UPath, data_object):
+        with self.filesystem.open(UPath, mode='wb') as f:
             np.save(f, data_object.state)
 
     def get_id_kwargs(self, data_object):
@@ -487,8 +487,8 @@ class MockMutableModelNumpyAdapter(AbstractDataFileAdapter):
                 "version_timestamp": data_object.attrs.get("version_timestamp")
                 }
 
-    def path_to_id_kwargs(self, path):
-        base_name = pathlib.Path(path).stem
+    def path_to_id_kwargs(self, UPath):
+        base_name = upath.UPath(UPath).stem
         schema_ref, data_name, version_string = base_name.split("__")
         version_timestamp = int(version_string.split("_")[1])
         return {"schema_ref": schema_ref,

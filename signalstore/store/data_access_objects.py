@@ -407,8 +407,8 @@ class FileSystemDAO(AbstractDataAccessObject):
             data_adapter = self._default_data_adapter
         else:
             data_adapter.set_filesystem(self._fs)
-        path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
-        if not self._fs.exists(path):
+        UPath = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
+        if not self._fs.exists(UPath):
             # if the version_timestamp was specified, that's the only version we want to get
             # if it doesn't exist, we return None
             if version_timestamp is not None:
@@ -417,17 +417,17 @@ class FileSystemDAO(AbstractDataAccessObject):
             pattern = self._directory + '/' + basename + '*_version_*' + data_adapter.file_extension
             glob = self._fs.glob(pattern)
             # filter out the paths that have a time_of_removal value
-            paths = list(filter(lambda path: '_time_of_removal_' not in path, glob))
+            paths = list(filter(lambda UPath: '_time_of_removal_' not in UPath, glob))
             if len(paths) == 0:
                 return None
             else:
                 # get the most recent version
                 paths.sort()
                 try:
-                    path = paths[-nth_most_recent]
+                    UPath = paths[-nth_most_recent]
                 except IndexError:
                     return None
-        data_object = data_adapter.read_file(path)
+        data_object = data_adapter.read_file(UPath)
         data_object = self._deserialize(data_object)
         return data_object
 
@@ -441,8 +441,8 @@ class FileSystemDAO(AbstractDataAccessObject):
             bool -- True if the object exists, else False.
         """
         self._check_args(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, data_adapter=data_adapter)
-        path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
-        return self._fs.exists(path)
+        UPath = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
+        return self._fs.exists(UPath)
 
     def n_versions(self, schema_ref, data_name):
         """Returns the number of versions of an object in the repository."""
@@ -451,7 +451,7 @@ class FileSystemDAO(AbstractDataAccessObject):
         globstring = self._directory + '/' + pattern
         glob = self._fs.glob(globstring)
         # filter out the paths that have a time_of_removal value
-        paths = filter(lambda path: '_time_of_removal_' not in path, glob)
+        paths = filter(lambda UPath: '_time_of_removal_' not in UPath, glob)
         return len(list(paths))
 
     def add(self, data_object, data_adapter=None):
@@ -477,13 +477,13 @@ class FileSystemDAO(AbstractDataAccessObject):
                 f"Type mismatch: Received {type(data_object).__name__}, but expected {data_adapter.data_object_type.__name__}.Ensure 'data_object' matches the type required by the current 'data_adapter'. If you're using the default data adapter, it may not be compatible with 'data_object'. Consider specifying a different data adapter that accepts {type(data_object).__name__}. Current data_adapter type: {type(data_adapter).__name__}."
             )
         idkwargs = data_adapter.get_id_kwargs(data_object) # (schema_ref, data_name, version_timestamp)
-        path = self.make_filepath(**idkwargs, data_adapter=data_adapter)
+        UPath = self.make_filepath(**idkwargs, data_adapter=data_adapter)
         if self.exists(**idkwargs, data_adapter=data_adapter):
             raise FileSystemDAOFileAlreadyExistsError(
-                f'Cannot add object with path "{path}" because it already exists in repository.'
+                f'Cannot add object with UPath "{UPath}" because it already exists in repository.'
             )
         data_object = self._serialize(data_object)
-        data_adapter.write_file(path=path, data_object=data_object)
+        data_adapter.write_file(UPath=UPath, data_object=data_object)
         self._deserialize(data_object) # undo the serialization in case the object is mutated
         return None
 
@@ -509,21 +509,21 @@ class FileSystemDAO(AbstractDataAccessObject):
                          data_adapter=data_adapter)
         if not self.exists(schema_ref, data_name, version_timestamp, data_adapter):
             raise FileSystemDAOFileNotFoundError(
-                    f'Cannot remove object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} because it does not exist in repository. The path would have been {self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)} if this error had not occurred. The exists method returned False.'
+                    f'Cannot remove object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} because it does not exist in repository. The UPath would have been {self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)} if this error had not occurred. The exists method returned False.'
             )
         old_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
         new_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter, time_of_removal)
         if self._fs.exists(new_path):
             raise FileSystemDAOFileAlreadyExistsError(
-                f'Cannot mark object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion because the path {new_path} already exists in repository. The time_of_removal may need to be updated to a more recent time.'
+                f'Cannot mark object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion because the UPath {new_path} already exists in repository. The time_of_removal may need to be updated to a more recent time.'
             )
-        # check if path is file or directory
+        # check if UPath is file or directory
         try:
             self._fs.mv(path1=str(old_path), path2=str(new_path), recursive=True)
         except Exception as e:
             trace = traceback.format_exc()
             raise FileSystemDAOUncaughtError(
-                f'An error occurred while renaming the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion. The old path was {old_path} and the new (trash) path was going to be {new_path} The error was: {e} and the traceback was \n\n{trace}'
+                f'An error occurred while renaming the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion. The old UPath was {old_path} and the new (trash) UPath was going to be {new_path} The error was: {e} and the traceback was \n\n{trace}'
             )
         return None
 
@@ -545,10 +545,10 @@ class FileSystemDAO(AbstractDataAccessObject):
             result = list(paths)
         else:
             result = []
-            for path in paths:
-                tor = self._get_time_of_removal_from_path(path)
+            for UPath in paths:
+                tor = self._get_time_of_removal_from_path(UPath)
                 if tor <= time_threshold:
-                    result.append(path)
+                    result.append(UPath)
         return result
 
 
@@ -601,7 +601,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             raise FileSystemDAORangeError(
                 f'Arg nth_most_recent={nth_most_recent} out of range. The record of deleted objects only contains {len(paths)} entries.'
             )
-        # set path to the new path
+        # set UPath to the new UPath
         new_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
         try:
             self._fs.mv(str(nth_path), str(new_path), recursive=True)
@@ -624,8 +624,8 @@ class FileSystemDAO(AbstractDataAccessObject):
         self._check_args(time_threshold=time_threshold)
         paths = self.list_marked_for_deletion(time_threshold, data_adapter)
         count = len(paths)
-        for path in paths:
-            self._fs.rm(path, recursive=True)
+        for UPath in paths:
+            self._fs.rm(UPath, recursive=True)
         return count
 
 
@@ -694,13 +694,13 @@ class FileSystemDAO(AbstractDataAccessObject):
         return data_object
 
 
-    def _get_time_of_removal_from_path(self, path):
-        """Returns the time of removal from a path."""
-        filename = os.path.basename(path)
+    def _get_time_of_removal_from_path(self, UPath):
+        """Returns the time of removal from a UPath."""
+        filename = os.path.basename(UPath)
         match = re.search(r'__time_of_removal_(\d+)', filename)
         if match is None:
             raise FileSystemDAOUncaughtError(
-                f'An error occurred while parsing the time_of_removal from path {path}.'
+                f'An error occurred while parsing the time_of_removal from UPath {UPath}.'
             )
         return microseconds_to_datetime(int(match.group(1)))
 

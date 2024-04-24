@@ -90,7 +90,7 @@ def read_data(filename):
             # by default, this script interprets digital events (digital inputs, outputs, amp settle, compliance limit, and charge recovery) as booleans
             # if unsigned int values are preferred (0 for False, 1 for True), replace the 'dtype=np.bool_' argument with 'dtype=np.uint' as shown
             # the commented line below illustrates this for digital input data; the same can be done for the other digital data types
-            
+
             #data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=np.uint)
             data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=np.bool_)
             data['board_dig_in_raw'] = np.zeros(num_board_dig_in_samples, dtype=np.uint)
@@ -148,7 +148,7 @@ def read_data(filename):
         data['charge_recovery_data'] = np.bitwise_and(data['stim_data_raw'], 16384) >= 1 # get 2^14 bit, interpret as True or False
         data['amp_settle_data'] = np.bitwise_and(data['stim_data_raw'], 8192) >= 1 # get 2^13 bit, interpret as True or False
         data['stim_polarity'] = 1 - (2*(np.bitwise_and(data['stim_data_raw'], 256) >> 8)) # get 2^8 bit, interpret as +1 for 0_bit or -1 for 1_bit
-        
+
         curr_amp = np.bitwise_and(data['stim_data_raw'], 255) # get least-significant 8 bits corresponding to the current amplitude
         data['stim_data'] = curr_amp * data['stim_polarity'] # multiply current amplitude by the correct sign
 
@@ -194,7 +194,7 @@ def read_data(filename):
     result = data_to_result(header, data, data_present)
 
     print('Done!  Elapsed time: {0:0.1f} seconds'.format(time.time() - tic))
-    
+
     return result
 
 

@@ -11,11 +11,11 @@ class AbstractDataFileAdapter(ABC):
         self.filesystem = filesystem
 
     @abstractmethod
-    def read_file(self, path):
+    def read_file(self, UPath):
         pass
 
     @abstractmethod
-    def write_file(self, path, data_object):
+    def write_file(self, UPath, data_object):
         pass
 
     @abstractmethod
@@ -58,15 +58,15 @@ class XarrayDataArrayNetCDFAdapter(AbstractDataFileAdapter):
                 "version_timestamp": data_object.attrs.get("version_timestamp")
                 }
 
-    def read_file(self, path):
-        with self.filesystem.open(path, mode='rb') as f:
+    def read_file(self, UPath):
+        with self.filesystem.open(UPath, mode='rb') as f:
             data_object = xr.open_dataarray(f, engine="scipy")
         return data_object
 
-    def write_file(self, path, data_object):
+    def write_file(self, UPath, data_object):
         # make file if it doesn't exist
         data_object = self._clean_attributes(data_object)
-        with self.filesystem.open(path, mode='wb') as f:
+        with self.filesystem.open(UPath, mode='wb') as f:
             data_object.to_netcdf(f, engine="scipy")
 
     def _clean_attributes(self, data_object):
@@ -105,14 +105,14 @@ class XarrayDataArrayZarrAdapter(AbstractDataFileAdapter):
                 "version_timestamp": data_object.attrs.get("version_timestamp")
                 }
 
-    def read_file(self, path):
-        store = self.filesystem.get_mapper(path)
+    def read_file(self, UPath):
+        store = self.filesystem.get_mapper(UPath)
         data_object = xr.open_dataarray(store, engine="zarr")
         return data_object
 
-    def write_file(self, path, data_object):
+    def write_file(self, UPath, data_object):
         # make zarr dir if it doesn't exist
-        store = self.filesystem.get_mapper(path)
+        store = self.filesystem.get_mapper(UPath)
         data_object = self._clean_attributes(data_object)
         data_object.to_zarr(store, consolidated=True)
         return data_object
