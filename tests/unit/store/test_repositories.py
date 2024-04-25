@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
-from src.store.repositories import *
+from signalstore.store.repositories import *
 
 class TestDomainModelRepository:
     # get tests (test all expected behaviors of get())
