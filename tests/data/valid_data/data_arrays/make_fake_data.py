@@ -6,7 +6,7 @@ import json
 import pathlib
 
 
-def main():
+def make_fake_data():
     # get records from tests/data/records.json
     data_dir = pathlib.Path(__file__).parent.parent
     records_path = data_dir / "records.json"
@@ -56,4 +56,4 @@ def adapt(value):
 
 
 if __name__ == "__main__":
-    main()
+    make_fake_data()

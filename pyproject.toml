@@ -15,6 +15,7 @@ dependencies = [
     "gcsfs", # for loading data from google cloud storage with fsspec
     "dask", # for parallelizing data processing and analysis
     "scipy", # for reading and writing NetCDF files among other things
+    "netcdf4", # for reading and writing NetCDF files when scipy is not sufficient
     "zarr", # for reading and writing zarr files directly
     "openpyxl", # for reading excel project organzier files that store metadata
     "pydantic"
