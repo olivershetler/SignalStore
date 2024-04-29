@@ -27,7 +27,7 @@ class UnitOfWorkProvider:
         record_dao = MongoDAO(client=self._mongo_client,
                             database_name=project_name,
                             collection_name='records',
-                            index_fields=['schema_ref', 'data_name'])
+                            index_fields=['schema_ref', 'data_name', 'version_timestamp'])
 
         file_system_dao = FileSystemDAO(filesystem=self._filesystem,
                                         project_dir=project_name)

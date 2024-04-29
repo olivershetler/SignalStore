@@ -12,9 +12,7 @@
                 "enum": ["animal"]
             },
             "data_name": {},
-            "version_timestamp": {
-                "const": null
-            },
+            "version_timestamp": {},
             "has_file": {
                 "const": false
             },

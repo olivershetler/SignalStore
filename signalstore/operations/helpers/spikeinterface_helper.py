@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 import neo
 import pickle
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class SpikeinterfaceMEArecHelper:

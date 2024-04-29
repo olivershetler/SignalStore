@@ -673,7 +673,7 @@ class AxonaPosAdapterError(Exception):
 
 import xarray as xr
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def read_spike_data_set(tetrode_file_path, cut_file_path, session_data_ref, tetrode_name):

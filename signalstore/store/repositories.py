@@ -43,7 +43,7 @@ class AbstractRepository(ABC):
     def timestamp(self):
         """Get a timestamp to use for tracking and sorting CRUD operations.
         """
-        return datetime.utcnow()
+        return datetime.now(timezone.utc)
 
 
     @abstractmethod
@@ -205,6 +205,13 @@ domain_model_json_schema = {
       "type": ["string", "null"],
       "pattern": model_identifier_regex
     },
+    "version_timestamp": {
+        "type": ["datetime", "integer"],
+        "if": { "type": "integer" },
+        "then": {
+            "const": 0
+        }
+        },
     "time_of_save": {
       "type": "datetime"
     },
@@ -248,7 +255,7 @@ domain_model_json_schema = {
 }
 
 def is_datetime(checker, instance):
-    return isinstance(instance, type(datetime.utcnow()))
+    return isinstance(instance, type(datetime.now(timezone.utc)))
 # Create a new type checker that adds 'datetime' as a new type
 type_checker = jsonschema.Draft7Validator.TYPE_CHECKER.redefine("datetime", is_datetime)
 # Create a new validator class using the new type checker
@@ -463,13 +470,18 @@ class DataRepository(AbstractQueriableRepository):
         self._operation_history = []
         self._validator = CustomValidator
 
-    def get(self, schema_ref, data_name, version_timestamp=None, data_adapter=None):
+    def get(self, schema_ref, data_name, nth_most_recent=None, version_timestamp=0, data_adapter=None):
         """Get a single record."""
         # if argument is a dict, try unpacking it
+        if not nth_most_recent is None and nth_most_recent < 1:
+            raise DataRepositoryRangeError(f"nth_most_recent must be an integer greater than 0, not {nth_most_recent}.")
         self._check_args(schema_ref=schema_ref,
                          data_name=data_name,
                          version_timestamp=version_timestamp)
-        record = self._records.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
+        if nth_most_recent is not None and version_timestamp is not None:
+            record = self._records.find(filter={"schema_ref": schema_ref, "data_name": data_name}, sort=[("version_timestamp", -1)], limit=nth_most_recent)
+        else:
+            record = self._records.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         if record is None:
             return None
         self._validate(record)
@@ -501,7 +513,7 @@ class DataRepository(AbstractQueriableRepository):
             self._validate(record)
         return records
 
-    def exists(self, schema_ref, data_name, version_timestamp=None):
+    def exists(self, schema_ref, data_name, version_timestamp=0):
         """Check if a record exists."""
         self._check_args(schema_ref=schema_ref,
                          data_name=data_name,
@@ -509,7 +521,7 @@ class DataRepository(AbstractQueriableRepository):
         record_exists = self._records.exists(version_timestamp=version_timestamp, schema_ref=schema_ref, data_name=data_name)
         return record_exists
 
-    def has_file(self, schema_ref, data_name, version_timestamp=None):
+    def has_file(self, schema_ref, data_name, version_timestamp=0):
         """Check if a record has data."""
         self._check_args(schema_ref=schema_ref,
                          data_name=data_name,
@@ -517,35 +529,62 @@ class DataRepository(AbstractQueriableRepository):
         has_file = self._data.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         return has_file
 
-    def add(self, object, data_adapter=None):
+    def add(self, object, data_adapter=None, versioning_on=False):
         """Add a single object to the repository."""
+        add_timestamp = self.timestamp
+        if isinstance(object, dict):
+            if versioning_on and "version_timestamp" not in object.attrs:
+                object["version_timestamp"] = add_timestamp
+            elif not versioning_on:
+                object["version_timestamp"] = 0
+        elif hasattr(object, "attrs"):
+            if versioning_on and "version_timestamp" not in object.attrs:
+                object.attrs["version_timestamp"] = add_timestamp
+            elif not versioning_on:
+                object.attrs["version_timestamp"] = 0
         if data_adapter is None:
             if isinstance(object, dict):
                 # just add the record and do not add any files
-                ohe = OperationHistoryEntry(self.timestamp, self._records.collection_name, "added", schema_ref=object["schema_ref"], data_name=object["data_name"], version_timestamp=object.get("version_timestamp"), has_file = False)
+                ohe = OperationHistoryEntry(
+                    add_timestamp,
+                    self._records.collection_name,
+                    "added",
+                    schema_ref=object["schema_ref"],
+                    data_name=object["data_name"],
+                    version_timestamp=object["version_timestamp"],
+                    has_file = False)
                 self._validate(object)
                 self._records.add(document=object, timestamp=ohe.timestamp)
                 self._operation_history.append(ohe)
                 return ohe
             else:
                 data_adapter = self._data._default_data_adapter
-        record = object.attrs
-        ohe = OperationHistoryEntry(self.timestamp, self._records.collection_name, "added", schema_ref=record["schema_ref"], data_name=record["data_name"], version_timestamp=record.get("version_timestamp"), has_file = True)
-        self._validate(record)
-        # add the record
-        self._records.add(document=record, timestamp=ohe.timestamp)
-        # add the data
-        schema_ref, data_name, version_timestamp = record.get("schema_ref"), record.get("data_name"), record.get("version_timestamp")
-        self._data.add(data_object=object,
-                       data_adapter=data_adapter)
+        ohe = OperationHistoryEntry(
+            self.timestamp,
+            self._records.collection_name, "added",
+            schema_ref=object.attrs["schema_ref"],
+            data_name=object.attrs["data_name"],
+            has_file = True,
+            version_timestamp=object.attrs["version_timestamp"])
+        self._validate(object.attrs)
+        self._records.add(
+            document=object.attrs,
+            timestamp=object.attrs["version_timestamp"],
+            versioning_on=versioning_on
+            )
+        self._data.add(
+            data_object=object,
+            data_adapter=data_adapter
+            )
         self._operation_history.append(ohe)
         return ohe
 
-    def remove(self, schema_ref, data_name, version_timestamp=None):
+    def remove(self, schema_ref, data_name, version_timestamp=0):
         """Mark a single record for deletion; remove it from the scope of get and list searches."""
-        self._check_args(schema_ref=schema_ref,
-                         data_name=data_name,
-                         version_timestamp=version_timestamp)
+        self._check_args(
+            schema_ref=schema_ref,
+            data_name=data_name,
+            version_timestamp=version_timestamp)
         ohe = OperationHistoryEntry(self.timestamp, self._records.collection_name, "removed", schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         if not self._records.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp):
             raise DataRepositoryNotFoundError(f"A record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' does not exist in the repository.")
@@ -658,7 +697,7 @@ class DataRepository(AbstractQueriableRepository):
         return {
             "schema_ref": (str),
             "data_name": (str),
-            "version_timestamp": (type(None), datetime),
+            "version_timestamp": (datetime, int),
             "filter": (dict, type(None)),
             "projection": (dict, type(None)),
         }

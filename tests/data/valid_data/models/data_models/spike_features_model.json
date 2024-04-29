@@ -12,9 +12,7 @@
                 "enum": ["spike_features"]
             },
             "data_name": {},
-            "version": {
-                "const": null
-            },
+            "version_timestamp": {},
             "has_file": {
                 "const": true
             },

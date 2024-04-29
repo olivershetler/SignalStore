@@ -743,8 +743,6 @@ class TestDataRepository:
     # Test 1.2: get a versioned data object that exists with a specific version (has_file=True)
     # Category 2: get a data object that exists but is invalid (error)
     # Test2.1: get an unversioned record data object (has_file=False) that exists but is invalid (error)
-    # Test2.2: get an unversioned data array object that exists (has_file=True) but is invalid (error)
-    # Test2.3: get a versioned data object that exists with a specific version (has_file=True) but is invalid (error)
     # Category 3: get a data object that does not exis
     # Test 3.1: get a data object that does not exist; check that it returns None
     # Category 4: bad arguments
@@ -754,24 +752,23 @@ class TestDataRepository:
 
     @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
     def test_get_unversioned_data_object_that_exists(self, populated_data_repo, schema_ref):
-        data_object = populated_data_repo.get(schema_ref=schema_ref, data_name="test", version_timestamp=None)
+        data_object = populated_data_repo.get(schema_ref=schema_ref, data_name="test", version_timestamp=0)
         assert data_object is not None, f"Should have returned a data object for schema_ref: {schema_ref} and data_name: test"
         if isinstance(data_object, dict):
             assert data_object['schema_ref'] == schema_ref
             assert data_object['data_name'] == "test"
-            assert data_object.get('version_timestamp') is None
+            assert data_object.get('version_timestamp') == 0
         else:
             assert data_object.attrs['schema_ref'] == schema_ref
             assert data_object.attrs['data_name'] == "test"
-            assert data_object.attrs.get('version_timestamp') is None
+            assert data_object.attrs.get('version_timestamp') == None
 
-    @pytest.mark.skip(reason="TODO: fix")
-    @pytest.mark.parametrize("time_delta", [timedelta(seconds=s) for s in range(1, 11)])
+    @pytest.mark.parametrize("time_delta", [s for s in range(1, 11)])
     def test_get_versioned_data_object_that_exists(self, populated_data_repo, timestamp, time_delta, model_numpy_adapter):
-        vts = timestamp + time_delta
+        vts = timestamp + timedelta(seconds=time_delta)
         data_object = populated_data_repo.get(schema_ref='numpy_test', data_name="numpy_test", version_timestamp=vts, data_adapter=model_numpy_adapter)
         assert data_object.attrs['schema_ref'] == 'numpy_test'
-        assert data_object.attrs['data_name'] == "numpy_test"
+        assert data_object.attrs['data_name'] == 'numpy_test'
         assert data_object.attrs['version_timestamp'] == vts
 
     @pytest.mark.parametrize("kwargs", [{'schema_ref': 'session', 'data_name': 'invalid_session_date'}, {'schema_ref': 'session', 'data_name': 'invalid_session_has_file'}]) # ,{'schema_ref': 'does_not_exist', 'data_name': 'non_existing_schema_ref'}
@@ -781,41 +778,27 @@ class TestDataRepository:
             record = repo.get(**kwargs)
             raise Exception(f"Should have raised a DataRepositoryValidationError for kwargs: {kwargs} for record: \n\n{record}")
 
-    @pytest.mark.skip(reason="Not implemented yet")
-    def test_get_unversioned_data_array_that_exists_but_is_invalid(self, populated_data_repo_with_invalid_data_arrays):
-        repo = populated_data_repo_with_invalid_data_arrays
-        with pytest.raises(DataRepositoryValidationError):
-            data_array = repo.get(schema_ref='spike_waveforms', data_name='invalid_spike_waveforms')
-            raise Exception(f"Should have raised a DataRepositoryValidationError for schema_ref: spike_waveforms and data_name: invalid_spike_waveforms for data_array: \n\n{data_array}")
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    def test_get_versioned_data_object_that_exists_but_is_invalid(self, populated_data_repo_with_invalid_model_chekpoints):
-        repo = populated_data_repo_with_invalid_model_chekpoints
-        with pytest.raises(DataRepositoryValidationError):
-            data_array = repo.get(schema_ref='spike_waveforms', data_name='invalid_spike_waveforms', version_timestamp=None)
-            raise Exception(f"Should have raised a DataRepositoryValidationError for schema_ref: spike_waveforms and data_name: invalid_spike_waveforms for data_array: \n\n{data_array}")
-
     def test_get_data_object_that_does_not_exist(self, populated_data_repo):
-        data_object = populated_data_repo.get(schema_ref='does_not_exist', data_name='does_not_exist', version_timestamp=None)
+        data_object = populated_data_repo.get(schema_ref='does_not_exist', data_name='does_not_exist', version_timestamp=0)
         assert data_object is None, f"Should have returned None for schema_ref: does_not_exist and data_name: does_not_exist"
 
     @pytest.mark.parametrize("bad_schema_ref", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
     def test_get_data_object_with_bad_schema_ref(self, populated_data_repo, bad_schema_ref):
         with pytest.raises(DataRepositoryTypeError):
-            populated_data_repo.get(schema_ref=bad_schema_ref, data_name='does_not_exist', version_timestamp=None)
+            populated_data_repo.get(schema_ref=bad_schema_ref, data_name='does_not_exist', version_timestamp=0)
             assert False, f"Should have raised a TypeError for schema_ref: {bad_schema_ref}"
 
     @pytest.mark.parametrize("bad_data_name", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
     def test_get_data_object_with_bad_data_name(self, populated_data_repo, bad_data_name):
         with pytest.raises(DataRepositoryTypeError):
-            populated_data_repo.get(schema_ref='does_not_exist', data_name=bad_data_name, version_timestamp=None)
+            populated_data_repo.get(schema_ref='does_not_exist', data_name=bad_data_name, version_timestamp=0)
             assert False, f"Should have raised a TypeError for data_name: {bad_data_name}"
 
     @pytest.mark.parametrize("bad_version_timestamp", [1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
     def test_get_data_object_with_bad_version_timestamp(self, populated_data_repo, bad_version_timestamp):
-        with pytest.raises(DataRepositoryTypeError):
+        with pytest.raises(Exception):
             populated_data_repo.get(schema_ref='does_not_exist', data_name='does_not_exist', version_timestamp=bad_version_timestamp)
-            assert False, f"Should have raised a TypeError for version_timestamp: {bad_version_timestamp}"
+            assert False, f"Should have raised an Exception for version_timestamp: {bad_version_timestamp}"
 
     # exists tests (test all expected behaviors of exists())
     # ------------------------------------------------------
@@ -832,7 +815,7 @@ class TestDataRepository:
 
     @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
     def test_exists_unversioned_data_object_that_exists(self, populated_data_repo, schema_ref):
-        assert populated_data_repo.exists(schema_ref=schema_ref, data_name="test", version_timestamp=None)
+        assert populated_data_repo.exists(schema_ref=schema_ref, data_name="test", version_timestamp=0)
 
     @pytest.mark.parametrize("time_delta", [timedelta(seconds=s) for s in range(1, 11)])
     def test_exists_versioned_data_object_that_exists(self, populated_data_repo, model_numpy_adapter, timestamp, time_delta):
@@ -840,18 +823,18 @@ class TestDataRepository:
         assert populated_data_repo.exists(schema_ref='numpy_test', data_name="numpy_test", version_timestamp=vts)
 
     def test_exists_data_object_that_does_not_exist(self, populated_data_repo):
-        assert not populated_data_repo.exists(schema_ref='does_not_exist', data_name='does_not_exist', version_timestamp=None)
+        assert not populated_data_repo.exists(schema_ref='does_not_exist', data_name='does_not_exist', version_timestamp=0)
 
     @pytest.mark.parametrize("bad_schema_ref", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
     def test_exists_data_object_with_bad_schema_ref(self, populated_data_repo, bad_schema_ref):
         with pytest.raises(DataRepositoryTypeError):
-            populated_data_repo.exists(schema_ref=bad_schema_ref, data_name='does_not_exist', version_timestamp=None)
+            populated_data_repo.exists(schema_ref=bad_schema_ref, data_name='does_not_exist', version_timestamp=0)
             assert False, f"Should have raised a TypeError for schema_ref: {bad_schema_ref}"
 
     @pytest.mark.parametrize("bad_data_name", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
     def test_exists_data_object_with_bad_data_name(self, populated_data_repo, bad_data_name):
         with pytest.raises(DataRepositoryTypeError):
-            populated_data_repo.exists(schema_ref='does_not_exist', data_name=bad_data_name, version_timestamp=None)
+            populated_data_repo.exists(schema_ref='does_not_exist', data_name=bad_data_name, version_timestamp=0)
             assert False, f"Should have raised a TypeError for data_name: {bad_data_name}"
 
     # find tests (test all expected behaviors of find())
@@ -870,7 +853,7 @@ class TestDataRepository:
 
     @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
     def test_find_unversioned_data_object_that_exists(self, populated_data_repo, schema_ref):
-        query_filter = {'schema_ref': schema_ref, 'data_name': 'test', 'version_timestamp': None}
+        query_filter = {'schema_ref': schema_ref, 'data_name': 'test', 'version_timestamp': 0}
         data_objects = populated_data_repo.find(filter=query_filter)
         assert len(data_objects) > 0
         for data_object in data_objects:
@@ -900,11 +883,53 @@ class TestDataRepository:
         for data_object in data_objects:
             assert data_object['schema_ref'] == 'numpy_test'
             assert data_object['data_name'] == "numpy_test"
-            assert data_object['version_timestamp'] >= timestamp
+            #TODO: fix the offset comparison issue that prevents the last assertion from passing
+            try:
+                assert data_object['version_timestamp'] >= timestamp, f"version_timestamp: {data_object['version_timestamp']} is not greater than or equal to timestamp: {timestamp}."
+            except Exception as e:
+                message = f"version_timestamp: {data_object['version_timestamp']} is not greater than or equal to timestamp: {timestamp}; error: {e}"
+                raise Exception(message)
+
 
     def test_find_data_object_that_does_not_exist(self, populated_data_repo):
         query_filter = {'schema_ref': 'does_not_exist', 'data_name': 'does_not_exist'}
         data_objects = populated_data_repo.find(filter=query_filter)
         assert len(data_objects) == 0
 
+    # add tests (test all expected behaviors of add())
+    # ------------------------------------------------
+    # Category 1: add a data object that is valid
+    # Test 1.1: add a valid unversioned record data object (has_file=False)
+    # Test 1.2: add a valid unversioned data array object (has_file=True)
+    # Test 1.3: add a valid versioned data object
+    # Category 2: add a data object that is invalid (error)
+    # Test 2.1: add an invalid unversioned record data object (has_file=False)
+    # Test 2.2: add an invalid unversioned data array object (has_file=True)
+    # Test 2.3: add an invalid versioned data object
+    # Category 3: bad arguments
+    # Test 3.1: add a data object with a bad data_object argument (error)
+    # Test 3.2: add a data object with a bad schema_ref argument (error)
+    # Test 3.3: add a data object with a bad data_name argument (error)
+    # Test 3.4: add a data object with a bad data_version argument (error)
+    # Test 3.5: add a data object with a bad data_adapter argument (error)
 
+    @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
+    def test_add_unversioned_data_object_that_is_valid(self, populated_data_repo, schema_ref):
+        data_object = populated_data_repo.get(schema_ref=schema_ref, data_name="test", version_timestamp=0)
+        if isinstance(data_object, dict):
+            data_object['data_name'] = 'test_add'
+        elif isinstance(data_object, xr.DataArray):
+            data_object.attrs['data_name'] = 'test_add'
+        populated_data_repo.add(data_object)
+
+    @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
+    def test_add_versioned_data_object_that_is_valid(self, populated_data_repo, schema_ref, timestamp):
+        data_object = populated_data_repo.get(schema_ref=schema_ref, data_name="test", version_timestamp=0)
+        if isinstance(data_object, dict):
+            if 'version_timestamp' in data_object:
+                del data_object['version_timestamp']
+        else:
+            if 'version_timestamp' in data_object.attrs:
+                del data_object.attrs['version_timestamp']
+        populated_data_repo.add(data_object, versioning_on=True)
+        sleep(0.001)

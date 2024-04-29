@@ -8,6 +8,7 @@ import numpy as np
 import fsspec
 from fsspec.implementations.local import LocalFileSystem
 from upath import UPath
+from time import sleep
 
 from signalstore.store.data_access_objects import (
     MongoDAO,
@@ -46,7 +47,7 @@ from datetime import datetime, timezone, timedelta
 
 @pytest.fixture
 def timestamp():
-    return datetime.utcnow()
+    return datetime.now(tz=timezone.utc)
 
 @pytest.fixture
 def project():
@@ -373,7 +374,7 @@ def _invalid_records_fixture(timestamp):
     return invalid_records
 
 def record_dao_factory(client, project):
-    return MongoDAO(client, project, "records", ["schema_ref", "data_name"])
+    return MongoDAO(client, project, "records", ["schema_ref", "data_name", "version_timestamp"])
 
 @pytest.fixture
 def populated_record_dao(empty_client, project, records, timestamp):
@@ -450,7 +451,7 @@ def _test_dataarray_fixture(timestamp):
     dataarray = xr.DataArray([[1, 2, 3], [4, 5, 6]], dims=("x", "y"), coords={"x": [10, 20]})
     dataarray.attrs["schema_ref"] = "test"
     dataarray.attrs["data_name"] = "test"
-    dataarray.attrs["version_timestamp"] = None
+    dataarray.attrs["version_timestamp"] = 0
     dataarray.attrs["time_of_save"] = datetime_to_microseconds(timestamp)
     dataarray.attrs["time_of_removal"] = ""
     return dataarray
@@ -472,25 +473,25 @@ class MockMutableModelHelper(AbstractMutableHelper):
 
 class MockMutableModelNumpyAdapter(AbstractDataFileAdapter):
 
-    def read_file(self, UPath):
-        with self.filesystem.open(UPath, mode='rb') as f:
-            idkwargs = self.path_to_id_kwargs(UPath)
+    def read_file(self, path):
+        with self.filesystem.open(path, mode='rb') as f:
+            idkwargs = self.path_to_id_kwargs(path)
             helper = MockMutableModelHelper(**idkwargs)
             helper.state = np.load(f)
         return helper
 
-    def write_file(self, UPath, data_object):
-        with self.filesystem.open(UPath, mode='wb') as f:
+    def write_file(self, path, data_object):
+        with self.filesystem.open(path, mode='wb') as f:
             np.save(f, data_object.state)
 
     def get_id_kwargs(self, data_object):
         return {"schema_ref": data_object.attrs.get("schema_ref"),
                 "data_name": data_object.attrs.get("data_name"),
-                "version_timestamp": data_object.attrs.get("version_timestamp")
+                "version_timestamp": data_object.attrs.get("version_timestamp") or 0
                 }
 
-    def path_to_id_kwargs(self, UPath):
-        base_name = upath.UPath(UPath).stem
+    def path_to_id_kwargs(self, path):
+        base_name = upath.UPath(path).stem
         schema_ref, data_name, version_string = base_name.split("__")
         version_timestamp = int(version_string.split("_")[1])
         return {"schema_ref": schema_ref,
@@ -579,6 +580,7 @@ def _populated_file_dao_fixture(tmpdir, dataarrays, xarray_netcdf_adapter, model
                         project_dir=project_dir,
                         default_data_adapter=xarray_netcdf_adapter)
     for dataarray in dataarrays:
+        deserialize_dataarray(dataarray)
         dao.add(data_object=dataarray)
     for i in range(1, 11):
         mutable_model_helper.attrs["version_timestamp"] = timestamp + timedelta(seconds=i)
@@ -703,7 +705,8 @@ def populated_data_repo(populated_domain_repo, populated_record_dao, populated_f
         mutable_model_helper.attrs["data_name"] = "numpy_test"
         mutable_model_helper.attrs["has_file"] = True
         mutable_model_helper.train(i)
-        data_repo.add(object=mutable_model_helper, data_adapter=model_numpy_adapter)
+        data_repo.add(object=mutable_model_helper, data_adapter=model_numpy_adapter, versioning_on=True)
+
 
     return data_repo
 
@@ -718,9 +721,12 @@ def populated_data_repo_with_invalid_records(populated_domain_repo, populated_re
         mutable_model_helper.attrs["data_name"] = "numpy_test"
         mutable_model_helper.attrs["has_file"] = True
         mutable_model_helper.train(i)
-        data_repo.add(object=mutable_model_helper, data_adapter=model_numpy_adapter)
+        data_repo.add(object=mutable_model_helper, data_adapter=model_numpy_adapter, versioning_on=True)
+        sleep(0.001)
 
     return data_repo
+
+
 
 # ===================
 # InMemoryObjectRepository

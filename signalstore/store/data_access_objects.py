@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import glob
 import re
@@ -9,6 +9,7 @@ import fsspec
 import gc # import garbage collector for memory management
 import json
 import traceback
+from time import sleep
 
 from signalstore.store.store_errors import *
 
@@ -103,23 +104,9 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         index_field_tuples.append(('version_timestamp', 1))
         index_field_tuples.append(('time_of_removal', 1))
         self._collection.create_index(index_field_tuples, unique=True) # create index
-        # set argument types dictionary for checking argument types
-        self._argument_types = {
-            'version_timestamp': (type(datetime.utcnow())),
-            'filter': (dict, type(None)),
-            'projection': (dict, type(None)),
-            'timestamp': (type(datetime.utcnow())),
-            'time_threshold': (type(datetime.utcnow()), type(None)),
-            'nth_most_recent': (int),
-            'override_existing_document': (bool),
-            'not_exist_ok': (bool),
-            'document': (dict),
-        }
-        # set all the index names as argument options with string type
-        for field in index_fields:
-            self._argument_types[field] = (str) # only string type because they can never be None
+        self._set_argument_types(index_fields)
 
-    def get(self, version_timestamp=None, **kwargs):
+    def get(self, version_timestamp=0, **kwargs):
         """Gets a document from the repository.
         Arguments:
             **kwargs {dict} -- Only the index fields are allowed as keyword arguments.
@@ -160,11 +147,11 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         documents = [self._deserialize(document) for document in self._collection.find(filter, projection, **kwargs)]
         return documents
 
-    def exists(self, version_timestamp=None, **kwargs):
+    def exists(self, version_timestamp=0, **kwargs):
         self._check_kwargs_are_only_index_args(**kwargs)
         self._check_args(**kwargs)
         return self._collection.find_one({'time_of_removal': None,
-                                          'version_timestamp':version_timestamp,
+                                          'version_timestamp': version_timestamp,
                                            **kwargs}) is not None
 
     def add(self, document, timestamp, versioning_on=False):
@@ -179,20 +166,23 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         """
         self._check_args(document=document, timestamp=timestamp)
         # get the index fields from the document
+        if document.get('version_timestamp') is None or document.get('version_timestamp') == 0:
+            if versioning_on:
+                document['version_timestamp'] = timestamp
+            else:
+                document['version_timestamp'] = 0
         document_index_args = {key: value for key, value in document.items() if key in self._index_args}
         if self.exists(**document_index_args):
             raise MongoDAODocumentAlreadyExistsError(
-                f'Cannot add document with index fields {document} because it already exists in repository.'
+                f'Cannot add document with index fields {document_index_args} because it already exists in repository.'
             )
         document = document.copy()
         document['time_of_save'] = timestamp
         document['time_of_removal'] = None
-        if versioning_on:
-            document['version_timestamp'] = timestamp
         result = self._collection.insert_one(self._serialize(document))
         return None
 
-    def mark_for_deletion(self, timestamp, version_timestamp=None, **kwargs):
+    def mark_for_deletion(self, timestamp, version_timestamp=0, **kwargs):
         """Marks a document for deletion.
         Arguments:
             timestamp {datetime.timestamp} -- The timestamp to mark the document for deletion with.
@@ -202,6 +192,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         Returns:
             None
         """
+        sleep(0.0000001) # sleep for a very short time to avoid
         self._check_args(timestamp=timestamp, version_timestamp=version_timestamp, **kwargs)
         self._check_kwargs_are_only_index_args(**kwargs)
         document = self.get(**kwargs, version_timestamp=version_timestamp)
@@ -290,9 +281,11 @@ class MongoDAO(AbstractQueriableDataAccessObject):
                 )
 
     def _check_kwargs_are_only_index_args(self, **kwargs):
-        if not self._index_args == set(kwargs.keys()):
+        keys = set(kwargs.keys())
+        index_2 = self._index_args - {'version_timestamp'} # sometimes we don't use version_timestamp
+        if not (self._index_args == keys or index_2 == keys):
             raise MongoDAOArgumentNameError(
-                f'Invalid keyword arguments.\nRequired arguments: {self._index_args}.\nOptional arguments: None.'
+                f"Invalid keyword arguments: {keys}.\nRequired arguments: {self._index_args - {'version_timestamp'}}.\nOptional arguments: 'version_timestamp'."
             )
 
     def _serialize(self, document):
@@ -338,6 +331,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         return {
             'time_of_save': datetime_to_microseconds,
             'time_of_removal': datetime_to_microseconds,
+            'version_timestamp': adapt_version_timestamp,
             'json_schema': dict_to_json_bytes,
         }
 
@@ -346,12 +340,32 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         return {
             'time_of_save': microseconds_to_datetime,
             'time_of_removal': microseconds_to_datetime,
+            'version_timestamp': lambda x: 0 if x == 0 or x is None else x,
             'json_schema': json_bytes_to_dict,
         }
 
     @property
     def collection_name(self):
         return self._collection_name
+
+    def _set_argument_types(self, index_fields):
+        # set argument types dictionary for checking argument types
+        nowtype = type(datetime.now(timezone.utc))
+        self._argument_types = {
+            'version_timestamp': (nowtype, int),
+            'filter': (dict, type(None)),
+            'projection': (dict, type(None)),
+            'timestamp': (nowtype),
+            'time_threshold': (nowtype, type(None)),
+            'nth_most_recent': (int),
+            'override_existing_document': (bool),
+            'not_exist_ok': (bool),
+            'document': (dict),
+        }
+        # set all the index names as argument options with string type
+        for field in index_fields:
+            if field not in self._argument_types:
+                self._argument_types[field] = (str) # only string type because they can never be None
 
 # ===================
 
@@ -387,7 +401,7 @@ class FileSystemDAO(AbstractDataAccessObject):
         default_data_adapter.set_filesystem(self._fs)
         self._default_data_adapter = default_data_adapter
 
-    def get(self, schema_ref, data_name, version_timestamp=None, nth_most_recent=1, data_adapter=None):
+    def get(self, schema_ref, data_name, version_timestamp=0, nth_most_recent=1, data_adapter=None):
         """Gets an object from the repository.
         Arguments:
             schema_ref {str} -- The type of object to get.
@@ -407,31 +421,31 @@ class FileSystemDAO(AbstractDataAccessObject):
             data_adapter = self._default_data_adapter
         else:
             data_adapter.set_filesystem(self._fs)
-        UPath = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
-        if not self._fs.exists(UPath):
+        path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
+        if not self._fs.exists(path):
             # if the version_timestamp was specified, that's the only version we want to get
             # if it doesn't exist, we return None
-            if version_timestamp is not None:
+            if version_timestamp != 0:
                 return None
             basename = self.make_base_filename(schema_ref, data_name)
             pattern = self._directory + '/' + basename + '*_version_*' + data_adapter.file_extension
             glob = self._fs.glob(pattern)
             # filter out the paths that have a time_of_removal value
-            paths = list(filter(lambda UPath: '_time_of_removal_' not in UPath, glob))
+            paths = list(filter(lambda path: '_time_of_removal_' not in path, glob))
             if len(paths) == 0:
                 return None
             else:
                 # get the most recent version
                 paths.sort()
                 try:
-                    UPath = paths[-nth_most_recent]
+                    path = paths[-nth_most_recent]
                 except IndexError:
                     return None
-        data_object = data_adapter.read_file(UPath)
+        data_object = data_adapter.read_file(path)
         data_object = self._deserialize(data_object)
         return data_object
 
-    def exists(self, schema_ref, data_name, version_timestamp=None, data_adapter=None):
+    def exists(self, schema_ref, data_name, version_timestamp=0, data_adapter=None):
         """Checks if an object exists in the repository.
         Arguments:
             schema_ref {str} -- The type of object to check.
@@ -441,8 +455,8 @@ class FileSystemDAO(AbstractDataAccessObject):
             bool -- True if the object exists, else False.
         """
         self._check_args(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, data_adapter=data_adapter)
-        UPath = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
-        return self._fs.exists(UPath)
+        path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
+        return self._fs.exists(path)
 
     def n_versions(self, schema_ref, data_name):
         """Returns the number of versions of an object in the repository."""
@@ -451,7 +465,7 @@ class FileSystemDAO(AbstractDataAccessObject):
         globstring = self._directory + '/' + pattern
         glob = self._fs.glob(globstring)
         # filter out the paths that have a time_of_removal value
-        paths = filter(lambda UPath: '_time_of_removal_' not in UPath, glob)
+        paths = filter(lambda path: '_time_of_removal_' not in path, glob)
         return len(list(paths))
 
     def add(self, data_object, data_adapter=None):
@@ -476,18 +490,20 @@ class FileSystemDAO(AbstractDataAccessObject):
             raise FileSystemDAOTypeError(
                 f"Type mismatch: Received {type(data_object).__name__}, but expected {data_adapter.data_object_type.__name__}.Ensure 'data_object' matches the type required by the current 'data_adapter'. If you're using the default data adapter, it may not be compatible with 'data_object'. Consider specifying a different data adapter that accepts {type(data_object).__name__}. Current data_adapter type: {type(data_adapter).__name__}."
             )
+        if data_object.attrs.get('version_timestamp') is None:
+            data_object.attrs['version_timestamp'] = 0
         idkwargs = data_adapter.get_id_kwargs(data_object) # (schema_ref, data_name, version_timestamp)
-        UPath = self.make_filepath(**idkwargs, data_adapter=data_adapter)
+        path = self.make_filepath(**idkwargs, data_adapter=data_adapter)
         if self.exists(**idkwargs, data_adapter=data_adapter):
             raise FileSystemDAOFileAlreadyExistsError(
-                f'Cannot add object with UPath "{UPath}" because it already exists in repository.'
+                f'Cannot add object with path "{path}" because it already exists in repository.'
             )
         data_object = self._serialize(data_object)
-        data_adapter.write_file(UPath=UPath, data_object=data_object)
+        data_adapter.write_file(path=path, data_object=data_object)
         self._deserialize(data_object) # undo the serialization in case the object is mutated
         return None
 
-    def mark_for_deletion(self, schema_ref, data_name, time_of_removal, version_timestamp=None, data_adapter=None):
+    def mark_for_deletion(self, schema_ref, data_name, time_of_removal, version_timestamp=0, data_adapter=None):
         """Marks an object for deletion.
         Arguments:
             schema_ref {str} -- The type of object to mark for deletion.
@@ -502,6 +518,7 @@ class FileSystemDAO(AbstractDataAccessObject):
         Returns:
             None
         """
+        sleep(0.0000001) # to prevent non-unique time_of_removal values
         self._check_args(time_of_removal=time_of_removal,
                          schema_ref=schema_ref,
                          data_name=data_name,
@@ -509,21 +526,21 @@ class FileSystemDAO(AbstractDataAccessObject):
                          data_adapter=data_adapter)
         if not self.exists(schema_ref, data_name, version_timestamp, data_adapter):
             raise FileSystemDAOFileNotFoundError(
-                    f'Cannot remove object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} because it does not exist in repository. The UPath would have been {self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)} if this error had not occurred. The exists method returned False.'
+                    f'Cannot remove object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} because it does not exist in repository. The path would have been {self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)} if this error had not occurred. The exists method returned False.'
             )
         old_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
         new_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter, time_of_removal)
         if self._fs.exists(new_path):
             raise FileSystemDAOFileAlreadyExistsError(
-                f'Cannot mark object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion because the UPath {new_path} already exists in repository. The time_of_removal may need to be updated to a more recent time.'
+                f'Cannot mark object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion because the path {new_path} already exists in repository. The time_of_removal may need to be updated to a more recent time.'
             )
-        # check if UPath is file or directory
+        # check if path is file or directory
         try:
             self._fs.mv(path1=str(old_path), path2=str(new_path), recursive=True)
         except Exception as e:
             trace = traceback.format_exc()
             raise FileSystemDAOUncaughtError(
-                f'An error occurred while renaming the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion. The old UPath was {old_path} and the new (trash) UPath was going to be {new_path} The error was: {e} and the traceback was \n\n{trace}'
+                f'An error occurred while renaming the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion. The old path was {old_path} and the new (trash) path was going to be {new_path} The error was: {e} and the traceback was \n\n{trace}'
             )
         return None
 
@@ -545,14 +562,14 @@ class FileSystemDAO(AbstractDataAccessObject):
             result = list(paths)
         else:
             result = []
-            for UPath in paths:
-                tor = self._get_time_of_removal_from_path(UPath)
+            for path in paths:
+                tor = self._get_time_of_removal_from_path(path)
                 if tor <= time_threshold:
-                    result.append(UPath)
+                    result.append(path)
         return result
 
 
-    def restore(self, schema_ref, data_name, version_timestamp=None, nth_most_recent=1, data_adapter=None):
+    def restore(self, schema_ref, data_name, version_timestamp=0, nth_most_recent=1, data_adapter=None):
         """Restores an object.
         Arguments:
             schema_ref {str} -- The type of object to restore.
@@ -601,7 +618,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             raise FileSystemDAORangeError(
                 f'Arg nth_most_recent={nth_most_recent} out of range. The record of deleted objects only contains {len(paths)} entries.'
             )
-        # set UPath to the new UPath
+        # set path to the new path
         new_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
         try:
             self._fs.mv(str(nth_path), str(new_path), recursive=True)
@@ -624,12 +641,12 @@ class FileSystemDAO(AbstractDataAccessObject):
         self._check_args(time_threshold=time_threshold)
         paths = self.list_marked_for_deletion(time_threshold, data_adapter)
         count = len(paths)
-        for UPath in paths:
-            self._fs.rm(UPath, recursive=True)
+        for path in paths:
+            self._fs.rm(path, recursive=True)
         return count
 
 
-    def make_filepath(self, schema_ref, data_name, version_timestamp=None, data_adapter = None, time_of_removal=None):
+    def make_filepath(self, schema_ref, data_name, version_timestamp=0, data_adapter = None, time_of_removal=None):
         """Returns the filepath for a data array."""
         if data_adapter is None:
             data_adapter = self._default_data_adapter
@@ -641,10 +658,10 @@ class FileSystemDAO(AbstractDataAccessObject):
         filename = f"/{basename}{data_adapter.file_extension}"
         return self._directory + filename
 
-    def make_base_filename(self, schema_ref, data_name, version_timestamp=None):
+    def make_base_filename(self, schema_ref, data_name, version_timestamp=0):
         """Returns the base filename for a data array."""
         basename = f"{schema_ref}__{data_name}"
-        if version_timestamp is not None:
+        if version_timestamp != 0:
             basename += f"__version_{datetime_to_microseconds(version_timestamp)}"
         return basename
 
@@ -664,7 +681,9 @@ class FileSystemDAO(AbstractDataAccessObject):
             if isinstance(value, dict):
                 attrs[key] = json.dumps(value)
             if isinstance(value, list):
-                attrs[key] = np.array(value)
+                attrs[key] = json.dumps(value)
+            if key == 'version_timestamp' and isinstance(value, type(None)):
+                attrs[key] = 0
         data_object.attrs = attrs
         return data_object
 
@@ -686,21 +705,26 @@ class FileSystemDAO(AbstractDataAccessObject):
                     attrs[key] = None
                 elif value.startswith('{'):
                     attrs[key] = json.loads(value)
+                # check if value is a list by looking for brackets and commas
+                elif value.startswith('[') and value.endswith(']') and ',' in value:
+                    attrs[key] = json.loads(value)
+                try:
+                    attrs[key] = int(value)
+                except ValueError:
+                    pass
             elif isinstance(value, np.ndarray):
                 attrs[key] = value.tolist()
-                ak = attrs[key]
-                print(f"TOLIST?: {ak}", flush=True)
         data_object.attrs = attrs
         return data_object
 
 
-    def _get_time_of_removal_from_path(self, UPath):
-        """Returns the time of removal from a UPath."""
-        filename = os.path.basename(UPath)
+    def _get_time_of_removal_from_path(self, path):
+        """Returns the time of removal from a path."""
+        filename = os.path.basename(path)
         match = re.search(r'__time_of_removal_(\d+)', filename)
         if match is None:
             raise FileSystemDAOUncaughtError(
-                f'An error occurred while parsing the time_of_removal from UPath {UPath}.'
+                f'An error occurred while parsing the time_of_removal from path {path}.'
             )
         return microseconds_to_datetime(int(match.group(1)))
 
@@ -720,11 +744,11 @@ class FileSystemDAO(AbstractDataAccessObject):
     @property
     def _argument_types(self):
         nonetype = type(None)
-        nowtype = type(datetime.utcnow())
+        nowtype = type(datetime.now(timezone.utc))
         return {
             'schema_ref': (str),
             'data_name': (str),
-            'version_timestamp': (nowtype, nonetype),
+            'version_timestamp': (nowtype, int),
             'time_of_removal': (nowtype, nonetype),
             'nth_most_recent': (int),
             'time_threshold': (nowtype, nonetype),
@@ -863,6 +887,7 @@ class InMemoryObjectDAO(AbstractQueriableDataAccessObject):
         Returns:
             None
         """
+        sleep(0.0000001) # to prevent non-unique timestamps
         self._check_args(tag=tag, time_of_removal=time_of_removal)
         if not self.exists(tag):
             raise InMemoryObjectDAOObjectNotFoundError(
@@ -986,9 +1011,16 @@ def datetime_to_microseconds(timestamp: datetime) -> int:
         Returns:
             int -- The timestamp in microseconds (full precision).
     """
+    if isinstance(timestamp, str):
+        timestamp = string_to_datetime(timestamp)
     if timestamp is None:
         return None
-    return int(timestamp.timestamp() * 1000000)
+    elif timestamp == 0:
+        return None
+    try:
+        return int(timestamp.timestamp() * 1000000)
+    except Exception as e:
+        raise TypeError(f'Invalid type {type(timestamp)} for argument timestamp == {timestamp}. Must be datetime\n\ntraceback: {e}')
 
 def microseconds_to_datetime(timestamp: int) -> datetime.utcnow:
     """Converts microseconds to a datetime object.
@@ -999,7 +1031,12 @@ def microseconds_to_datetime(timestamp: int) -> datetime.utcnow:
     """
     if timestamp is None:
         return None
-    return datetime.utcfromtimestamp(timestamp / 1000000)
+    elif timestamp == 0:
+        return 0
+    try:
+        return datetime.fromtimestamp(timestamp / 1000000).astimezone(timezone.utc)
+    except Exception as e:
+        raise TypeError(f'Invalid type {type(timestamp)} for argument timestamp = {timestamp}. Must be int\n\ntraceback: {e}')
 
 # JSON
 def dict_to_json_bytes(dictionary: dict) -> str:
@@ -1040,6 +1077,8 @@ def datetime_to_string(timestamp: datetime) -> str:
     Returns:
         str -- The timestamp as a string.
     """
+    if datetime == 0:
+        return '0'
     return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
 
 def string_to_datetime(timestamp: str) -> datetime:
@@ -1049,5 +1088,11 @@ def string_to_datetime(timestamp: str) -> datetime:
     Returns:
         datetime -- The timestamp as a datetime object.
     """
-    return datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
+    if timestamp == '0':
+        return 0
+    return datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f').astimezone(timezone.utc)
 
+def adapt_version_timestamp(vt):
+    if vt is None:
+        return 0
+    return vt

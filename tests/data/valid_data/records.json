@@ -7,13 +7,15 @@
     "session_date": "2023-08-10",
     "start_time": "12:00:00",
     "duration": "00:30:00",
-    "session_description": "This is a test session"
+    "session_description": "This is a test session",
+    "version_timestamp": 0
 },
 {
     "data_name": "test",
     "schema_ref": "animal",
     "has_file": false,
-    "animal_species": "mouse"
+    "animal_species": "mouse",
+    "version_timestamp": 0
 },
 {
     "data_name": "test",
@@ -26,7 +28,8 @@
     "dimension_of_measure": "[time]",
     "animal_data_ref": {"schema_ref": "animal", "data_name": "test"},
     "session_data_ref": {"schema_ref": "session", "data_name": "test"},
-    "probe_data_ref": {"schema_ref": "probe", "data_name": "probe_0"}
+    "probe_data_ref": {"schema_ref": "probe", "data_name": "probe_0"},
+    "version_timestamp": 0
 }
 ,{
     "data_name": "test",
@@ -39,7 +42,8 @@
     "dimension_of_measure": "[charge]",
     "animal_data_ref": {"schema_ref": "animal", "data_name": "test"},
     "session_data_ref": {"schema_ref": "session", "data_name": "test"},
-    "probe_data_ref": {"schema_ref": "probe", "data_name": "probe_0"}
+    "probe_data_ref": {"schema_ref": "probe", "data_name": "probe_0"},
+    "version_timestamp": 0
 },
 {
     "data_name": "test",
@@ -52,6 +56,7 @@
     "dimension_of_measure": "[nominal]",
     "animal_data_ref": {"schema_ref": "animal", "data_name": "test"},
     "session_data_ref": {"schema_ref": "session", "data_name": "test"},
-    "probe_data_ref": {"schema_ref": "probe", "data_name": "probe_0"}
+    "probe_data_ref": {"schema_ref": "probe", "data_name": "probe_0"},
+    "version_timestamp": 0
 }
 ]

@@ -12,15 +12,7 @@
                 "enum": ["spike_waveforms"]
             },
             "data_name": {},
-            "version_timestamp": {
-                "type": ["string", "null"],
-                "if": {
-                    "type": "string"
-                },
-                "then": {
-                    "format": "date-time"
-                }
-            },
+            "version_timestamp": {},
             "has_file": {
                 "type": "boolean",
                 "enum": [true]

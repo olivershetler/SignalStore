@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from signalstore.store.data_access_objects import *
 
 class TestDomainModelDAO:
@@ -132,24 +132,24 @@ class TestDomainModelDAO:
             'schema_title': 'New Model',
             'json_schema': {}
         }
-        populated_domain_model_dao.add(document=new_model, timestamp=datetime.utcnow())
+        populated_domain_model_dao.add(document=new_model, timestamp=datetime.now(timezone.utc))
         assert populated_domain_model_dao.exists(schema_name='new_model')
         # the model should have the same keys, plus a time_of_addition key
         # and a time_of_removal key. The time_of_removal key should be None
         # and the time_of_addition key should be an integer.
         model_with_timestamps = populated_domain_model_dao.get(schema_name='new_model')
-        assert model_with_timestamps.keys() == {'schema_name', 'schema_type', 'schema_description', 'schema_title', 'json_schema', 'time_of_save', 'time_of_removal'}, f"Expected model to have keys 'schema_name', 'schema_type', 'schema_description', 'schema_title', 'json_schema', 'time_of_addition', 'time_of_removal', got {model_with_timestamps.keys()}"
+        assert model_with_timestamps.keys() == {'schema_name', 'schema_type', 'schema_description', 'schema_title', 'json_schema', 'time_of_save', 'time_of_removal', 'version_timestamp'}, f"Expected model to have keys 'schema_name', 'schema_type', 'schema_description', 'schema_title', 'json_schema', 'time_of_addition', 'time_of_removal', got {model_with_timestamps.keys()}"
         assert isinstance(model_with_timestamps['time_of_save'], datetime)
         assert model_with_timestamps['time_of_removal'] is None
         assert model_with_timestamps['schema_name'] == 'new_model'
 
     def test_add_existing_model(self, populated_domain_model_dao):
         with pytest.raises(MongoDAODocumentAlreadyExistsError):
-            populated_domain_model_dao.add(document={'schema_name': 'dimension_of_measure'}, timestamp=datetime.utcnow())
+            populated_domain_model_dao.add(document={'schema_name': 'dimension_of_measure'}, timestamp=datetime.now(timezone.utc))
 
     def test_add_model_with_bad_argument(self, populated_domain_model_dao):
         with pytest.raises(MongoDAOTypeError):
-            populated_domain_model_dao.add(document=1, timestamp=datetime.utcnow())
+            populated_domain_model_dao.add(document=1, timestamp=datetime.now(timezone.utc))
 
     def test_add_model_with_bad_timestamp_argument(self, populated_domain_model_dao):
         with pytest.raises(MongoDAOTypeError):
@@ -166,17 +166,17 @@ class TestDomainModelDAO:
     # Test 3.2: Mark a single model for deletion with a bad timestamp argument (error)
 
     def test_mark_for_deletion_model_that_exists(self, populated_domain_model_dao):
-        populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=datetime.utcnow())
+        populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=datetime.now(timezone.utc))
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure'), f"Expected exists to return False, got {populated_domain_model_dao.exists(schema_name='dimension_of_measure')}"
         assert populated_domain_model_dao._collection.find_one({'schema_name': 'dimension_of_measure'}, {'_id':0})['time_of_removal'] is not None
 
     def test_mark_for_deletion_model_that_does_not_exist(self, populated_domain_model_dao):
         with pytest.raises(MongoDAODocumentNotFoundError):
-            populated_domain_model_dao.mark_for_deletion(schema_name='not_a_schema', timestamp=datetime.utcnow())
+            populated_domain_model_dao.mark_for_deletion(schema_name='not_a_schema', timestamp=datetime.now(timezone.utc))
 
     def test_mark_for_deletion_model_with_bad_argument(self, populated_domain_model_dao):
         with pytest.raises(MongoDAOTypeError):
-            populated_domain_model_dao.mark_for_deletion(schema_name=1, timestamp=datetime.utcnow())
+            populated_domain_model_dao.mark_for_deletion(schema_name=1, timestamp=datetime.now(timezone.utc))
 
     def test_mark_for_deletion_model_with_bad_timestamp(self, populated_domain_model_dao):
         with pytest.raises(MongoDAOTypeError):
@@ -194,7 +194,7 @@ class TestDomainModelDAO:
     @pytest.mark.parametrize('to_delete', [['dimension_of_measure', 'record_metamodel', 'spike_waveforms']])
     def test_list_marked_for_deletion_returns_all_with_no_arg(self, populated_domain_model_dao, to_delete):
         for schema_name in to_delete:
-            populated_domain_model_dao.mark_for_deletion(schema_name=schema_name, timestamp=datetime.utcnow())
+            populated_domain_model_dao.mark_for_deletion(schema_name=schema_name, timestamp=datetime.now(timezone.utc))
         response = populated_domain_model_dao.list_marked_for_deletion()
         assert len(response) == len(to_delete), f'Expected len(response) to be {len(to_delete)}, got {len(response)}'
         for record in response:
@@ -390,16 +390,14 @@ class TestFileSystemDAO:
         assert data_name == 'test', f'Expected data_name to be "spike_waveforms", got "{data_name}"'
         assert data_version == None, f'Expected data_version to be None, got "{data_version}"'
 
-    @pytest.mark.skip(reason="TODO: fix")
     @pytest.mark.parametrize('use_data_adapter', [True, False])
-    def test_get_versioned_file_with_timestamp(self, populated_numpy_file_dao, model_numpy_adapter, use_data_adapter):
+    def test_get_versioned_file_with_timestamp(self, populated_numpy_file_dao, model_numpy_adapter, use_data_adapter, timestamp):
         if use_data_adapter:
             data_adapter = model_numpy_adapter
         else:
             data_adapter = None
-        x = populated_numpy_file_dao.get(schema_ref='test', data_name='test', data_adapter=data_adapter)
-        ts = x.attrs["version_timestamp"]
-        model = populated_numpy_file_dao.get(schema_ref='test', data_name='test', version_timestamp=ts)
+        ts = timestamp + timedelta(seconds=10)
+        model = populated_numpy_file_dao.get(schema_ref='test', data_name='test', data_adapter=data_adapter)
         result = model.attrs["version_timestamp"]
         assert result == ts, f"Expected {ts} but got {result}."
 
@@ -424,17 +422,17 @@ class TestFileSystemDAO:
         file_dao = file_dao_options[file_type]
         assert file_dao.get(schema_ref='not_a_schema', data_name='not_a_data_name', data_adapter=None) is None
         assert file_dao.get(schema_ref='test', data_name='not_a_data_name', data_adapter=None) is None
-        assert file_dao.get(schema_ref='test', data_name='test', version_timestamp=datetime.utcnow()+timedelta(seconds=5)) is None
+        assert file_dao.get(schema_ref='test', data_name='test', version_timestamp=datetime.now(timezone.utc)+timedelta(seconds=5)) is None
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_get_file_with_bad_schema_ref_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
             data_object = file_dao.get(schema_ref=bad_arg, data_name='test', data_adapter=None)
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_get_file_with_bad_data_name_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
@@ -455,7 +453,7 @@ class TestFileSystemDAO:
             data_object = file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1, version_timestamp=bad_arg, data_adapter=bad_arg)
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.utcnow(), "string", {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.now(timezone.utc), "string", {"set"}, {"hash": "map"}])
     def test_get_file_with_bad_data_adapter_arg_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
@@ -482,10 +480,9 @@ class TestFileSystemDAO:
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     def test_exists_unversioned_file_that_exists(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
-        result = file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
+        result = file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
         assert result, f'Expected exists to return True, got {result}'
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_exists_versioned_file_with_timestamp(self, populated_numpy_file_dao):
         x = populated_numpy_file_dao.get(schema_ref='test', data_name='test')
         ts = x.attrs["version_timestamp"]
@@ -495,22 +492,22 @@ class TestFileSystemDAO:
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
     def test_exists_with_file_that_does_not_exist(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
-        result = file_dao.exists(schema_ref='not_a_schema', data_name='not_a_data_name', version_timestamp=None)
+        result = file_dao.exists(schema_ref='not_a_schema', data_name='not_a_data_name', version_timestamp=0)
         assert not result, f'Expected exists to return False, got {result}'
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_exists_with_bad_schema_ref_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
-            file_dao.exists(schema_ref=bad_arg, data_name='test', version_timestamp=None)
+            file_dao.exists(schema_ref=bad_arg, data_name='test', version_timestamp=0)
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_exists_with_bad_data_name_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
-            file_dao.exists(schema_ref='test', data_name=bad_arg, version_timestamp=None)
+            file_dao.exists(schema_ref='test', data_name=bad_arg, version_timestamp=0)
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
     @pytest.mark.parametrize('bad_arg', [1.5, "string", {"set"}, {"hash": "map"}])
@@ -547,14 +544,14 @@ class TestFileSystemDAO:
         assert result == 0, f'Expected n_versions to return 0, got {result}'
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_n_versions_with_bad_schema_ref_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
             file_dao.n_versions(schema_ref=bad_arg, data_name='test')
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_n_versions_with_bad_data_name_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
@@ -607,16 +604,14 @@ class TestFileSystemDAO:
         with pytest.raises(FileSystemDAOFileAlreadyExistsError):
             file_dao.add(data_object=data_object)
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_add_versioned_file_that_already_exists_with_same_timestamp(self, populated_numpy_file_dao):
         data_object = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent = 1)
         with pytest.raises(FileSystemDAOFileAlreadyExistsError):
             populated_numpy_file_dao.add(data_object=data_object)
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_add_versioned_file_that_already_exists_with_different_timestamp(self, populated_numpy_file_dao):
         data_object = populated_numpy_file_dao.get(schema_ref='test', data_name='test')
-        new_ts = datetime.utcnow() + timedelta(seconds=1)
+        new_ts = datetime.now(timezone.utc) + timedelta(seconds=11)
         data_object.attrs['version_timestamp'] = new_ts
         populated_numpy_file_dao.add(data_object=data_object)
         result = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
@@ -671,15 +666,14 @@ class TestFileSystemDAO:
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     def test_mark_for_deletion_unversioned_file_that_exists(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
-        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.utcnow())
-        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
-        assert file_dao.get(schema_ref='test', data_name='test', version_timestamp=None) is None
+        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.now(timezone.utc))
+        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
+        assert file_dao.get(schema_ref='test', data_name='test', version_timestamp=0) is None
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_mark_for_deletion_versioned_file_that_exists(self, populated_numpy_file_dao):
         to_remove = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
         ts = to_remove.attrs['version_timestamp']
-        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.utcnow())
+        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
         assert not populated_numpy_file_dao.exists(schema_ref='test', data_name='test', version_timestamp=ts)
         assert populated_numpy_file_dao.get(schema_ref='test', data_name='test', version_timestamp=ts) is None
         assert populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1) is not None
@@ -689,28 +683,28 @@ class TestFileSystemDAO:
     def test_mark_for_deletion_with_file_that_does_not_exist(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOFileNotFoundError):
-            file_dao.mark_for_deletion(schema_ref='not_a_schema', data_name='not_a_data_name', time_of_removal=datetime.utcnow())
+            file_dao.mark_for_deletion(schema_ref='not_a_schema', data_name='not_a_data_name', time_of_removal=datetime.now(timezone.utc))
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_mark_for_deletion_with_bad_schema_ref_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
-            file_dao.mark_for_deletion(schema_ref=bad_arg, data_name='test', time_of_removal=datetime.utcnow())
+            file_dao.mark_for_deletion(schema_ref=bad_arg, data_name='test', time_of_removal=datetime.now(timezone.utc))
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_mark_for_deletion_with_bad_data_name_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
-            file_dao.mark_for_deletion(schema_ref='test', data_name=bad_arg, time_of_removal=datetime.utcnow())
+            file_dao.mark_for_deletion(schema_ref='test', data_name=bad_arg, time_of_removal=datetime.now(timezone.utc))
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
     @pytest.mark.parametrize('bad_arg', [1.5, "string", {"set"}, {"hash": "map"}])
     def test_mark_for_deletion_with_bad_version_timestamp_arg_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
-            file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=bad_arg, time_of_removal=datetime.utcnow())
+            file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=bad_arg, time_of_removal=datetime.now(timezone.utc))
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
     @pytest.mark.parametrize('bad_arg', [1.5, "string", {"set"}, {"hash": "map"}])
@@ -720,11 +714,11 @@ class TestFileSystemDAO:
             file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=bad_arg)
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.utcnow(), "string", {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.now(timezone.utc), "string", {"set"}, {"hash": "map"}])
     def test_mark_for_deletion_with_bad_data_adapter_arg_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
-            file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.utcnow(), data_adapter=bad_arg)
+            file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.now(timezone.utc), data_adapter=bad_arg)
 
     # List marked for deletion tests (test all expected behaviors of list_marked_for_deletion())
     # -----------------------------------------------------------------------------------------
@@ -744,15 +738,14 @@ class TestFileSystemDAO:
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     def test_list_marked_for_deletion_unversioned_file_that_exists(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
-        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.utcnow())
+        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.now(timezone.utc))
         result = file_dao.list_marked_for_deletion()
         assert len(result) == 1
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_list_marked_for_deletion_versioned_file_that_exists(self, populated_numpy_file_dao):
         to_remove = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
         ts = to_remove.attrs['version_timestamp']
-        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.utcnow())
+        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
         result = populated_numpy_file_dao.list_marked_for_deletion()
         assert len(result) == 1
 
@@ -770,7 +763,7 @@ class TestFileSystemDAO:
             file_dao.list_marked_for_deletion(time_threshold=bad_arg)
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.utcnow(), "string", {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.now(timezone.utc), "string", {"set"}, {"hash": "map"}])
     def test_list_marked_for_deletion_with_bad_data_adapter_arg(self, file_dao_options, file_type, bad_arg):
         file_dao = file_dao_options[file_type]
         with pytest.raises(FileSystemDAOTypeError):
@@ -806,43 +799,40 @@ class TestFileSystemDAO:
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     def test_restore_unversioned_file_that_exists_and_has_been_removed(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
-        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.utcnow())
+        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.now(timezone.utc))
         file_dao.restore(schema_ref='test', data_name='test')
-        assert file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
-        assert file_dao.get(schema_ref='test', data_name='test', version_timestamp=None) is not None
+        assert file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
+        assert file_dao.get(schema_ref='test', data_name='test', version_timestamp=0) is not None
 
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     @pytest.mark.parametrize('n', [1, 2, 3, 4, 5, 6, 7, 8, 9])
     def test_restore_nth_most_recent_unversioned_file_that_exists_and_has_been_removed(self, file_dao_options, file_type, n):
         file_dao = file_dao_options[file_type]
-        first_tod = datetime.utcnow()
+        first_tod = datetime.now(timezone.utc)
         file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=first_tod)
         # restore and mark for deletion n times
         for i in range(n):
             file_dao.restore(schema_ref='test', data_name='test')
             file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=first_tod+timedelta(seconds=i+1))
-        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
+        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
         # restore one more time
         file_dao.restore(schema_ref='test', data_name='test')
-        assert file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
+        assert file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
         nth_most_recent = file_dao.get(schema_ref='test', data_name='test', nth_most_recent=n)
         assert nth_most_recent is not None
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_restore_versioned_file_that_exists_and_has_been_removed(self, populated_numpy_file_dao):
         to_remove = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
         ts = to_remove.attrs['version_timestamp']
-        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.utcnow())
+        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
         populated_numpy_file_dao.restore(schema_ref='test', data_name='test', version_timestamp=ts)
         assert populated_numpy_file_dao.exists(schema_ref='test', data_name='test', version_timestamp=ts)
         assert populated_numpy_file_dao.get(schema_ref='test', data_name='test', version_timestamp=ts) is not None
 
-    @pytest.mark.skip(reason="TODO: fix")
     @pytest.mark.parametrize('n', [1, 2, 3, 4, 5, 6, 7, 8, 9])
     def test_restore_nth_most_recent_versioned_file_that_exists_and_has_been_removed(self, populated_numpy_file_dao, n):
-        first_tod = datetime.utcnow()
+        first_tod = datetime.now(timezone.utc)
         to_remove = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
-        print(to_remove.attrs)
         ts = to_remove.attrs['version_timestamp']
         populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=first_tod)
         # restore and mark for deletion n times
@@ -875,7 +865,7 @@ class TestFileSystemDAO:
 
     def test_restore_versioned_file_that_does_not_exist(self, populated_numpy_file_dao):
         with pytest.raises(FileSystemDAORangeError):
-            populated_numpy_file_dao.restore(schema_ref='test', data_name='test', version_timestamp=datetime.utcnow())
+            populated_numpy_file_dao.restore(schema_ref='test', data_name='test', version_timestamp=datetime.now(timezone.utc))
 
     # purge tests (test all expected behaviors of purge())
     # ---------------------------------------------------------
@@ -902,50 +892,48 @@ class TestFileSystemDAO:
     def test_purge_all_unversioned_files_that_exist_and_have_been_removed(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
         to_delete = file_dao.get(schema_ref='test', data_name='test')
-        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.utcnow())
+        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.now(timezone.utc))
         for i in range(9):
             to_delete.attrs['data_name'] = f'test{i}'
             to_delete.attrs['schema_ref'] = f'test{i}'
             file_dao.add(data_object=to_delete)
-            assert file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=None)
-            file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.utcnow())
+            assert file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=0)
+            file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.now(timezone.utc))
         count = file_dao.purge(time_threshold=None)
         assert count == 10
-        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
+        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
         for i in range(9):
-            assert not file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=None)
+            assert not file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=0)
         assert len(file_dao.list_marked_for_deletion()) == 0
 
-    @pytest.mark.skip(reason="TODO: fix")
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     def test_purge_all_unversioned_files_that_exist_and_have_been_removed_with_time_threshold(self, file_dao_options, file_type):
         file_dao = file_dao_options[file_type]
         to_delete = file_dao.get(schema_ref='test', data_name='test')
-        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.utcnow())
+        file_dao.mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=datetime.now(timezone.utc))
         for i in range(9):
             to_delete.attrs['data_name'] = f'test{i}'
             to_delete.attrs['schema_ref'] = f'test{i}'
             file_dao.add(data_object=to_delete)
-            assert file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=None)
-            file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.utcnow())
-        count = file_dao.purge(time_threshold=datetime.utcnow())
+            assert file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=0)
+            file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.now(timezone.utc))
+        count = file_dao.purge(time_threshold=datetime.now(timezone.utc))
         assert count == 10
-        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=None)
+        assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
         for i in range(9):
-            assert not file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=None)
+            assert not file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=0)
         assert len(file_dao.list_marked_for_deletion()) == 0
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_purge_all_versioned_files_that_exist_and_have_been_removed(self, populated_numpy_file_dao):
         to_delete = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
         ts = to_delete.attrs['version_timestamp']
-        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.utcnow())
+        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
         for i in range(9):
             to_delete.attrs['data_name'] = f'test{i}'
             to_delete.attrs['schema_ref'] = f'test{i}'
             populated_numpy_file_dao.add(data_object=to_delete)
             assert populated_numpy_file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts)
-            populated_numpy_file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts, time_of_removal=datetime.utcnow())
+            populated_numpy_file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
         count = populated_numpy_file_dao.purge(time_threshold=None)
         assert count == 10
         assert not populated_numpy_file_dao.exists(schema_ref='test', data_name='test', version_timestamp=ts)
@@ -953,51 +941,49 @@ class TestFileSystemDAO:
             assert not populated_numpy_file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts)
         assert len(populated_numpy_file_dao.list_marked_for_deletion()) == 0
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_purge_all_versioned_files_that_exist_and_have_been_removed_with_time_threshold(self, populated_numpy_file_dao):
         to_delete = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
         ts = to_delete.attrs['version_timestamp']
-        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.utcnow())
+        populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
         for i in range(9):
             to_delete.attrs['data_name'] = f'test{i}'
             to_delete.attrs['schema_ref'] = f'test{i}'
             populated_numpy_file_dao.add(data_object=to_delete)
             assert populated_numpy_file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts)
-            populated_numpy_file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts, time_of_removal=datetime.utcnow())
-        count = populated_numpy_file_dao.purge(time_threshold=datetime.utcnow())
+            populated_numpy_file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts, time_of_removal=datetime.now(timezone.utc))
+        count = populated_numpy_file_dao.purge(time_threshold=datetime.now(timezone.utc))
         assert count == 10
 
-    @pytest.mark.skip(reason="TODO: fix")
     @pytest.mark.parametrize('file_type', ['netcdf', 'zarr'])
     @pytest.mark.parametrize('n', [1, 2, 3, 4, 5, 6, 7, 8, 9])
     def test_purge_only_n_unversioned_files_that_exist_and_have_been_removed(self, file_dao_options, file_type, n):
         to_delete = file_dao_options[file_type].get(schema_ref='test', data_name='test')
-        first_tod = datetime.utcnow()
+        first_tod = datetime.now(timezone.utc)
         file_dao_options[file_type].mark_for_deletion(schema_ref='test', data_name='test', time_of_removal=first_tod)
         for i in range(n):
             to_delete.attrs['data_name'] = f'test{i}'
             to_delete.attrs['schema_ref'] = f'test{i}'
             file_dao_options[file_type].add(data_object=to_delete)
-            assert file_dao_options[file_type].exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=None)
+            assert file_dao_options[file_type].exists(schema_ref=f'test{i}', data_name=f'test{i}')
             file_dao_options[file_type].mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=first_tod + timedelta(seconds=i + 1))
         count = file_dao_options[file_type].purge(time_threshold=first_tod+timedelta(seconds=n - 1))
         assert count == n
 
-    @pytest.mark.skip(reason="TODO: fix")
     @pytest.mark.parametrize('n', [1, 2, 3, 4, 5, 6, 7, 8, 9])
     def test_purge_only_n_versioned_files_that_exist_and_have_been_removed(self, populated_numpy_file_dao, n):
         to_delete = populated_numpy_file_dao.get(schema_ref='test', data_name='test', nth_most_recent=1)
         ts = to_delete.attrs['version_timestamp']
-        first_tod = datetime.utcnow()
+        first_tod = datetime.now(timezone.utc)
         populated_numpy_file_dao.mark_for_deletion(schema_ref='test', data_name='test', version_timestamp=ts, time_of_removal=first_tod)
         for i in range(n):
             to_delete.attrs['data_name'] = f'test{i}'
             to_delete.attrs['schema_ref'] = f'test{i}'
+            to_delete.attrs['version_timestamp'] = ts
             populated_numpy_file_dao.add(data_object=to_delete)
-            assert populated_numpy_file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts)
+            assert populated_numpy_file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts), f"test{i} does not exist"
             populated_numpy_file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=ts, time_of_removal=first_tod + timedelta(seconds=i + 1))
         count = populated_numpy_file_dao.purge(time_threshold=first_tod+timedelta(seconds=n - 1))
-        assert count == n
+        assert count == n, f"count is {count}"
 
 
 class TestInMemoryObjectDAO:
@@ -1020,7 +1006,7 @@ class TestInMemoryObjectDAO:
         result = populated_memory_dao.get(tag=f"not_a_tag")
         assert result is None
 
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_get_with_bad_tag_arg(self, populated_memory_dao, bad_arg):
         with pytest.raises(InMemoryObjectDAOTypeError):
             populated_memory_dao.get(tag=bad_arg)
@@ -1043,7 +1029,7 @@ class TestInMemoryObjectDAO:
         result = populated_memory_dao.exists(tag=f"not_a_tag")
         assert not result
 
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_exists_with_bad_tag_arg(self, populated_memory_dao, bad_arg):
         with pytest.raises(InMemoryObjectDAOTypeError):
             populated_memory_dao.exists(tag=bad_arg)
@@ -1078,7 +1064,7 @@ class TestInMemoryObjectDAO:
             with pytest.raises(InMemoryObjectDAOObjectAlreadyExistsError):
                 populated_memory_dao.add(tag=f"new_{type(obj).__name__.lower()}", object=obj)
 
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_add_with_bad_tag_arg(self, populated_memory_dao, bad_arg):
         with pytest.raises(InMemoryObjectDAOTypeError):
             populated_memory_dao.add(tag=bad_arg, object=100)
@@ -1096,7 +1082,7 @@ class TestInMemoryObjectDAO:
     def test_mark_for_deletion_object_that_exists(self, populated_memory_dao, tags):
         obj = populated_memory_dao.get(tag=tags)
         obj_id = id(obj)
-        populated_memory_dao.mark_for_deletion(tag=tags, time_of_removal = datetime.utcnow())
+        populated_memory_dao.mark_for_deletion(tag=tags, time_of_removal = datetime.now(timezone.utc))
         assert not populated_memory_dao.exists(tag=tags)
         assert populated_memory_dao.get(tag=tags) is None
         del_obj = populated_memory_dao._collection['objects'][obj_id]
@@ -1110,12 +1096,12 @@ class TestInMemoryObjectDAO:
 
     def test_mark_for_deletion_object_that_does_not_exist(self, populated_memory_dao):
         with pytest.raises(InMemoryObjectDAOObjectNotFoundError):
-            populated_memory_dao.mark_for_deletion(tag='not_a_tag', time_of_removal = datetime.utcnow())
+            populated_memory_dao.mark_for_deletion(tag='not_a_tag', time_of_removal = datetime.now(timezone.utc))
 
-    @pytest.mark.parametrize('bad_arg', [1, None, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, None, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_mark_for_deletion_with_bad_tag_arg(self, populated_memory_dao, bad_arg):
         with pytest.raises(InMemoryObjectDAOTypeError):
-            populated_memory_dao.mark_for_deletion(tag=bad_arg, time_of_removal = datetime.utcnow())
+            populated_memory_dao.mark_for_deletion(tag=bad_arg, time_of_removal = datetime.now(timezone.utc))
 
     # List marked for deletion tests (test all expected behaviors of list_marked_for_deletion())
     # -----------------------------------------------------------------------------------------
@@ -1127,15 +1113,13 @@ class TestInMemoryObjectDAO:
     # Category 3: Bad arguments
     # Test 3.1: List all objects with a bad time_threshold argument (error)
 
-    @pytest.mark.skip(reason="TODO: fix")
     @pytest.mark.parametrize('tags', [['test_list', 'test_str', 'test_bool', 'test_int', 'test_float', 'test_ndarray', 'test_dataarray']])
     def test_list_all_objects_marked_for_deltion_with_none_time_threshold(self, populated_memory_dao, tags):
         del_ids = []
         for obj in tags:
             del_ids.append(id(populated_memory_dao.get(tag=obj)))
-            populated_memory_dao.mark_for_deletion(tag=obj, time_of_removal=datetime.utcnow())
+            populated_memory_dao.mark_for_deletion(tag=obj, time_of_removal=datetime.now(timezone.utc))
         result = populated_memory_dao.list_marked_for_deletion()
-        print(result)
         assert len(result) == len(tags)
         for i in range(len(result)):
             # check the order of the objects
@@ -1149,7 +1133,7 @@ class TestInMemoryObjectDAO:
     @pytest.mark.parametrize('time_threshold_shift', list(map(lambda x: timedelta(seconds=x), range(1, 8))))
     def test_list_all_objects_marked_for_deltion_with_time_threshold(self, populated_memory_dao, tags, time_threshold_shift):
         del_ids = []
-        removal_start_time = datetime.utcnow()
+        removal_start_time = datetime.now(timezone.utc)
         for i, tag in enumerate(tags):
             del_ids.append(id(populated_memory_dao.get(tag=tag)))
             shift = timedelta(seconds=i + 0.5)
@@ -1187,7 +1171,7 @@ class TestInMemoryObjectDAO:
     @pytest.mark.parametrize('tags', [['test_list', 'test_str', 'test_bool', 'test_int', 'test_float', 'test_ndarray', 'test_dataarray']])
     def test_restore_object_that_exists_and_has_been_removed(self, populated_memory_dao, tags):
         for tag in tags:
-            populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=datetime.utcnow())
+            populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=datetime.now(timezone.utc))
             populated_memory_dao.restore(tag=tag)
             assert populated_memory_dao.exists(tag=tag)
 
@@ -1196,12 +1180,12 @@ class TestInMemoryObjectDAO:
             populated_memory_dao.restore(tag='test_list')
 
     def test_restore_object_that_has_already_been_permanently_deleted(self, populated_memory_dao):
-        populated_memory_dao.mark_for_deletion(tag='test_list', time_of_removal=datetime.utcnow())
+        populated_memory_dao.mark_for_deletion(tag='test_list', time_of_removal=datetime.now(timezone.utc))
         del populated_memory_dao._collection['removed']['test_list']
         with pytest.raises(InMemoryObjectDAOObjectNotFoundError):
             populated_memory_dao.restore(tag='test_list')
 
-    @pytest.mark.parametrize('bad_arg', [1, datetime.utcnow(), {"set"}, {"hash": "map"}])
+    @pytest.mark.parametrize('bad_arg', [1, datetime.now(timezone.utc), {"set"}, {"hash": "map"}])
     def test_restore_with_bad_tag_arg(self, populated_memory_dao, bad_arg):
         with pytest.raises(InMemoryObjectDAOTypeError):
             populated_memory_dao.restore(tag=bad_arg)
@@ -1221,7 +1205,7 @@ class TestInMemoryObjectDAO:
     @pytest.mark.parametrize('tags', [['test_list', 'test_str', 'test_bool', 'test_int', 'test_float', 'test_ndarray', 'test_dataarray']])
     def test_purge_all_objects_that_exist_and_have_been_removed(self, populated_memory_dao, tags):
         for tag in tags:
-            populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=datetime.utcnow())
+            populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=datetime.now(timezone.utc))
         count = populated_memory_dao.purge(time_threshold=None)
         assert count == len(tags)
         for tag in tags:
@@ -1230,17 +1214,16 @@ class TestInMemoryObjectDAO:
     @pytest.mark.parametrize('tags', [['test_list', 'test_str', 'test_bool', 'test_int', 'test_float', 'test_ndarray', 'test_dataarray']])
     def test_purge_all_objects_that_exist_and_have_been_removed_with_time_threshold(self, populated_memory_dao, tags):
         for tag in tags:
-            populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=datetime.utcnow())
-        count = populated_memory_dao.purge(time_threshold=datetime.utcnow())
+            populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=datetime.now(timezone.utc))
+        count = populated_memory_dao.purge(time_threshold=datetime.now(timezone.utc))
         assert count == len(tags)
         for tag in tags:
             assert not populated_memory_dao.exists(tag=tag)
 
-    @pytest.mark.skip()
     @pytest.mark.parametrize('tags', [['test_list', 'test_str', 'test_bool', 'test_int', 'test_float', 'test_ndarray', 'test_dataarray']])
     @pytest.mark.parametrize('time_threshold_shift', list(map(lambda x: timedelta(seconds=x), range(1, 8))))
     def test_purge_only_some_objects_that_exist_and_have_been_removed(self, populated_memory_dao, tags, time_threshold_shift):
-        removal_start_time = datetime.utcnow()
+        removal_start_time = datetime.now(timezone.utc)
         for i, tag in enumerate(tags):
             shift = timedelta(seconds=i + 0.5)
             populated_memory_dao.mark_for_deletion(tag=tag, time_of_removal=removal_start_time + shift)
