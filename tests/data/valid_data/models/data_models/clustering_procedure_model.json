@@ -23,7 +23,7 @@
             "time_of_removal": {},
             "time_of_save": {}
         },
-        "required": ["schema_ref", "data_name", "clustering_procedure_description", "clustering_procedure_software"],
+        "required": ["schema_ref", "data_name", "version_timestamp", "has_file", "clustering_procedure_description", "clustering_procedure_software"],
         "additionalProperties": true
     }
 }

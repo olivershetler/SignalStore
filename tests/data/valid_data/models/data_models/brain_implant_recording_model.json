@@ -54,7 +54,7 @@
             "time_of_removal": {},
             "time_of_save": {}
         },
-        "required": ["schema_ref", "data_name", "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref"],
+        "required": ["schema_ref", "data_name", "version_timestamp", "has_file", "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref"],
         "additionalProperties": true
     }
 }

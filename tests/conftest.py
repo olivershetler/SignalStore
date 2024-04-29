@@ -7,6 +7,7 @@ import xarray as xr
 import numpy as np
 import fsspec
 from fsspec.implementations.local import LocalFileSystem
+from fsspec.implementations.dirfs import DirFileSystem
 from upath import UPath
 from time import sleep
 
@@ -741,10 +742,11 @@ def populated_memory_repo(populated_record_repository, populated_memory_dao):
 @pytest.fixture(name="unit_of_work")
 def _unit_of_work_provider_fixture(tmpdir):
     mongo_client = mongomock.MongoClient()
-    filesystem = LocalFileSystem(root=str(tmpdir))
+    og_filesystem = LocalFileSystem(root=str(tmpdir))
+    filesystem = DirFileSystem(tmpdir, og_filesystem)
     memory_store = dict()
     uow_provider = UnitOfWorkProvider(mongo_client, filesystem, memory_store)
-    unit_of_work = uow_provider(tmpdir)
+    unit_of_work = uow_provider("testproject")
     with unit_of_work as uow:
         for property_model in raw_property_models:
             uow.domain_models.add(property_model)

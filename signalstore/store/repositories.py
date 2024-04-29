@@ -487,7 +487,11 @@ class DataRepository(AbstractQueriableRepository):
         self._validate(record)
         has_file = record.get("has_file")
         if has_file:
-            data = self._data.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, data_adapter=data_adapter)
+            data = self._data.get(
+                schema_ref=schema_ref,
+                data_name=data_name,
+                version_timestamp=version_timestamp,
+                data_adapter=data_adapter)
             if data is None:
                 raise DataRepositoryNotFoundError(f"Data for record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' does not exist in the repository. The record exists and has the 'has_file' attribute set to True, but the file data access object returned None.")
             # check that data.attrs is a subset of the record's attrs
@@ -533,7 +537,7 @@ class DataRepository(AbstractQueriableRepository):
         """Add a single object to the repository."""
         add_timestamp = self.timestamp
         if isinstance(object, dict):
-            if versioning_on and "version_timestamp" not in object.attrs:
+            if versioning_on and "version_timestamp" not in object:
                 object["version_timestamp"] = add_timestamp
             elif not versioning_on:
                 object["version_timestamp"] = 0
@@ -554,7 +558,7 @@ class DataRepository(AbstractQueriableRepository):
                     version_timestamp=object["version_timestamp"],
                     has_file = False)
                 self._validate(object)
-                self._records.add(document=object, timestamp=ohe.timestamp)
+                self._records.add(document=object, timestamp=ohe.timestamp, versioning_on=versioning_on)
                 self._operation_history.append(ohe)
                 return ohe
             else:

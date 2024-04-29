@@ -39,7 +39,7 @@
             "time_of_removal": {},
             "notes": {}
         },
-        "required": ["schema_ref", "data_name", "has_file", "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref", "feature_extraction_procedure_ref"],
+        "required": ["schema_ref", "data_name", "version_timestamp", "has_file",  "data_dimensions", "dimension_of_measure", "session_data_ref", "animal_data_ref", "probe_data_ref", "feature_extraction_procedure_ref"],
         "additionalProperties": true,
         "allOf": [
             {

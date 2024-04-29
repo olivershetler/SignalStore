@@ -331,7 +331,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         return {
             'time_of_save': datetime_to_microseconds,
             'time_of_removal': datetime_to_microseconds,
-            'version_timestamp': adapt_version_timestamp,
+            'version_timestamp': lambda x: 0 if x == 0 or x is None else x,
             'json_schema': dict_to_json_bytes,
         }
 
@@ -340,7 +340,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         return {
             'time_of_save': microseconds_to_datetime,
             'time_of_removal': microseconds_to_datetime,
-            'version_timestamp': lambda x: 0 if x == 0 or x is None else x,
+            'version_timestamp': lambda x: 0 if x == 0 or x is None else x.astimezone(timezone.utc),
             'json_schema': json_bytes_to_dict,
         }
 
@@ -1079,7 +1079,7 @@ def datetime_to_string(timestamp: datetime) -> str:
     """
     if datetime == 0:
         return '0'
-    return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
+    return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f %z')
 
 def string_to_datetime(timestamp: str) -> datetime:
     """Converts a string to a datetime object with microsecond precision.
@@ -1090,9 +1090,4 @@ def string_to_datetime(timestamp: str) -> datetime:
     """
     if timestamp == '0':
         return 0
-    return datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f').astimezone(timezone.utc)
-
-def adapt_version_timestamp(vt):
-    if vt is None:
-        return 0
-    return vt
+    return datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f %z')

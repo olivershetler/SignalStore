@@ -29,7 +29,7 @@
             "time_of_removal": {},
             "time_of_save": {}
         },
-        "required": ["schema_ref", "data_name", "probe_type", "probe_description", "probe_manufacturer", "probe_model"],
+        "required": ["schema_ref", "data_name", "version_timestamp", "has_file", "probe_type", "probe_description", "probe_manufacturer", "probe_model"],
         "additionalProperties": true
     }
 }

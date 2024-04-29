@@ -752,7 +752,11 @@ class TestDataRepository:
 
     @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
     def test_get_unversioned_data_object_that_exists(self, populated_data_repo, schema_ref):
-        data_object = populated_data_repo.get(schema_ref=schema_ref, data_name="test", version_timestamp=0)
+        data_object = populated_data_repo.get(
+            schema_ref=schema_ref,
+            data_name="test",
+            version_timestamp=0
+            )
         assert data_object is not None, f"Should have returned a data object for schema_ref: {schema_ref} and data_name: test"
         if isinstance(data_object, dict):
             assert data_object['schema_ref'] == schema_ref
@@ -761,7 +765,7 @@ class TestDataRepository:
         else:
             assert data_object.attrs['schema_ref'] == schema_ref
             assert data_object.attrs['data_name'] == "test"
-            assert data_object.attrs.get('version_timestamp') == None
+            assert data_object.attrs.get('version_timestamp') == 0
 
     @pytest.mark.parametrize("time_delta", [s for s in range(1, 11)])
     def test_get_versioned_data_object_that_exists(self, populated_data_repo, timestamp, time_delta, model_numpy_adapter):
@@ -860,11 +864,11 @@ class TestDataRepository:
             if isinstance(data_object, dict):
                 assert data_object['schema_ref'] == schema_ref
                 assert data_object['data_name'] == "test"
-                assert data_object.get('version_timestamp') is None
+                assert data_object.get('version_timestamp') == 0
             else:
                 assert data_object.attrs['schema_ref'] == schema_ref
                 assert data_object.attrs['data_name'] == "test"
-                assert data_object.attrs.get('version_timestamp') is None
+                assert data_object.attrs.get('version_timestamp') == 0
 
     def test_find_versioned_data_object_that_exists(self, populated_data_repo):
         query_filter = {'schema_ref': 'numpy_test', 'data_name': 'numpy_test'}

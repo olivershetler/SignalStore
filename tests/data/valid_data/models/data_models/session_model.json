@@ -29,7 +29,7 @@
             "animal_data_refs": {},
             "notes": {}
         },
-        "required": ["schema_ref", "data_name", "session_date", "start_time", "duration"],
+        "required": ["schema_ref", "data_name", "version_timestamp", "has_file", "session_date", "start_time", "duration"],
         "additionalProperties": true
     }
 }
