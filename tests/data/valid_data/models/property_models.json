@@ -5,7 +5,11 @@
     "schema_description": "The timestamp at which the version of a data object was created.",
     "schema_type": "property_model",
     "json_schema": {
-      "type": "datetime"
+      "type": ["datetime", "integer"],
+      "if": { "type": "integer" },
+      "then": {
+          "const": 0
+      }
     }
   },
   {
@@ -162,7 +166,7 @@
     {
       "schema_name": "acquisition_notes",
       "schema_title": "Acquisition Notes",
-      "schema_description": "Notes on the progeny of an acquisition. This field is usually automatically populated with an explanation of what the acquisition is by an import adapter within src.",
+      "schema_description": "Notes on the progeny of an acquisition. This field is usually automatically populated with an explanation of what the acquisition is by an import adapter within signalstore.",
       "schema_type": "property_model",
       "json_schema": {
         "type": "string"
@@ -217,7 +221,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{4}[0-9]{2}[0-9]{2})$"
+        "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})$"
       }
     },
     {
@@ -227,7 +231,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{2}:[0-9]{2}:[0-9]{2})$"
+        "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?$"
       }
     },
     {
@@ -237,7 +241,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{2}:[0-9]{2}:[0-9]{2})$"
+        "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?$"
       }
     },
     {
@@ -266,10 +270,14 @@
             "pattern": "^(?!.*(__|time_of_removal))[a-zA-Z0-9_/-]+$"
           },
           "version_timestamp": {
-            "type": "datetime"
+            "type": ["datetime", "integer"],
+            "if": { "type": "integer" },
+            "then": {
+                "const": 0
+            }
           }
         },
-        "required": [ 
+        "required": [
           "schema_ref",
           "data_name"
         ]
@@ -282,7 +290,7 @@
       "schema_type": "property_model",
       "json_schema": {
         "type": "string",
-        "pattern": "^([0-9]{2}:[0-9]{2}:[0-9]{2})$"
+        "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?$"
       }
     },
     {
@@ -405,7 +413,7 @@
     "json_schema": {
       "type": "string"
       }
-    }, 
+    },
     {"schema_name": "recording_length",
     "schema_title": "Recording Length",
     "schema_description": "The length of the recording.",

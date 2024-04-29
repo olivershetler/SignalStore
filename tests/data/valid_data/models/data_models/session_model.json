@@ -12,9 +12,7 @@
                 "enum": ["session"]
             },
             "data_name": {},
-            "version_timestamp": {
-                "const": null
-            },
+            "version_timestamp": {},
             "has_file": {
                 "type": "boolean",
                 "enum": [false]
