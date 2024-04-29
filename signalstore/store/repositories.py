@@ -546,6 +546,8 @@ class DataRepository(AbstractQueriableRepository):
                 object.attrs["version_timestamp"] = add_timestamp
             elif not versioning_on:
                 object.attrs["version_timestamp"] = 0
+        else:
+            raise DataRepositoryTypeError(f"object must be a dict or an object with an 'attrs' attribute, not {type(object)}")
         if data_adapter is None:
             if isinstance(object, dict):
                 # just add the record and do not add any files
@@ -606,26 +608,32 @@ class DataRepository(AbstractQueriableRepository):
             return None
         now = self.timestamp
         if ohe.operation=="removed":
-            self._records.restore(schema_ref = ohe.schema_ref,
-                                  data_name = ohe.data_name,
-                                  version_timestamp = ohe.version_timestamp,
-                                  timestamp = now,
-                                  nth_most_recent = 1)
-            self._data.restore(schema_ref = ohe.schema_ref,
-                                 data_name = ohe.data_name,
-                                 version_timestamp = ohe.version_timestamp,
-                                 timestamp = now,
-                                 nth_most_recent = 1)
+            self._records.restore(
+                schema_ref = ohe.schema_ref,
+                data_name = ohe.data_name,
+                version_timestamp = ohe.version_timestamp,
+                timestamp = now,
+                nth_most_recent = 1
+                )
+            self._data.restore(
+                schema_ref = ohe.schema_ref,
+                data_name = ohe.data_name,
+                version_timestamp = ohe.version_timestamp,
+                timestamp = now,
+                nth_most_recent = 1
+                )
         elif ohe.operation=="added":
             self._records.mark_for_deletion(schema_ref = ohe.schema_ref,
                                             data_name = ohe.data_name,
                                             version_timestamp = ohe.version_timestamp,
                                             timestamp = ohe.timestamp)
             if ohe.has_file:
-                self._data.mark_for_deletion(schema_ref = ohe.schema_ref,
-                                             data_name = ohe.data_name,
-                                             version_timestamp = ohe.version_timestamp,
-                                             time_of_removal = ohe.timestamp)
+                self._data.mark_for_deletion(
+                    schema_ref = ohe.schema_ref,
+                    data_name = ohe.data_name,
+                    version_timestamp = ohe.version_timestamp,
+                    time_of_removal = ohe.timestamp
+                    )
         # remove the operation history entry after successfully undoing the operation
         self._operation_history.pop()
         return ohe

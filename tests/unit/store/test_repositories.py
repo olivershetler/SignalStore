@@ -937,4 +937,33 @@ class TestDataRepository:
         populated_data_repo.add(data_object, versioning_on=True)
         sleep(0.001)
 
-    
+    def test_add_unversioned_record_that_is_invalid(self, populated_data_repo):
+        session_record = populated_data_repo.get(schema_ref='session', data_name='test', version_timestamp=0)
+        session_record['data_name'] = 'test_add_bad'
+        session_record['animal_data_ref'] = 5
+        with pytest.raises(DataRepositoryValidationError):
+            populated_data_repo.add(session_record, versioning_on=False)
+            assert False, f"Should have raised a DataRepositoryValidationError for session_record: {session_record}"
+
+    def test_add_unversioned_dataarray_that_is_invalid(self, populated_data_repo):
+        waveform_data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        waveform_data_array.attrs['data_name'] = 'test_add_bad'
+        waveform_data_array.attrs['session_data_ref'] = 5
+        with pytest.raises(DataRepositoryValidationError):
+            populated_data_repo.add(waveform_data_array, versioning_on=False)
+            assert False, f"Should have raised a DataRepositoryValidationError for waveform_data_array: {waveform_data_array}"
+
+    def test_add_versioned_data_object_that_is_invalid(self, populated_data_repo):
+        data_object = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        data_object.attrs['data_name'] = 'test_add_bad_versioned'
+        data_object.attrs['data'] = 5
+        with pytest.raises(DataRepositoryValidationError):
+            populated_data_repo.add(data_object, versioning_on=True)
+            assert False, f"Should have raised a DataRepositoryValidationError for data_object: {data_object}"
+
+    @pytest.mark.parametrize("bad_data_object", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
+    def test_add_data_object_with_bad_data_object(self, populated_data_repo, bad_data_object):
+        with pytest.raises(DataRepositoryTypeError):
+            ohe = populated_data_repo.add(bad_data_object, versioning_on=False)
+            assert False, f"Should have raised a TypeError for data_object: {bad_data_object}"
+
