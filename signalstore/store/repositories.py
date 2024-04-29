@@ -176,7 +176,7 @@ domain_model_json_schema = {
     "schema_description": {
       "type": "string",
       # pattern enforcing description cannot be empty or contain trailing whitespace
-      "pattern": "^\S(.*\S)?$"
+      "pattern": "^\\S(.*\\S)?$"
     },
     "schema_type": {
       "type": "string",
