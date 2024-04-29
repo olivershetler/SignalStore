@@ -19,6 +19,8 @@ class UnitOfWorkProvider:
         self._memory_store = memory_store
 
     def __call__(self, project_name):
+        if not isinstance(project_name, str):
+            raise ValueError("project_name must be a string")
         model_dao = MongoDAO(client=self._mongo_client,
                             database_name=project_name,
                             collection_name='domain_models',
