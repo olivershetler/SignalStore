@@ -558,7 +558,6 @@ class DataRepository(AbstractQueriableRepository):
                     version_timestamp=object["version_timestamp"],
                     has_file = False)
                 self._validate(object)
-                self._records.add(document=object, timestamp=ohe.timestamp, versioning_on=versioning_on)
                 self._operation_history.append(ohe)
                 return ohe
             else:
@@ -573,7 +572,7 @@ class DataRepository(AbstractQueriableRepository):
         self._validate(object.attrs)
         self._records.add(
             document=object.attrs,
-            timestamp=object.attrs["version_timestamp"],
+            timestamp=ohe.timestamp,
             versioning_on=versioning_on
             )
         self._data.add(

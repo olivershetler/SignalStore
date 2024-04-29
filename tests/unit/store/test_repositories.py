@@ -887,7 +887,6 @@ class TestDataRepository:
         for data_object in data_objects:
             assert data_object['schema_ref'] == 'numpy_test'
             assert data_object['data_name'] == "numpy_test"
-            #TODO: fix the offset comparison issue that prevents the last assertion from passing
             try:
                 assert data_object['version_timestamp'] >= timestamp, f"version_timestamp: {data_object['version_timestamp']} is not greater than or equal to timestamp: {timestamp}."
             except Exception as e:
@@ -924,7 +923,7 @@ class TestDataRepository:
             data_object['data_name'] = 'test_add'
         elif isinstance(data_object, xr.DataArray):
             data_object.attrs['data_name'] = 'test_add'
-        populated_data_repo.add(data_object)
+        populated_data_repo.add(data_object, versioning_on=False)
 
     @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
     def test_add_versioned_data_object_that_is_valid(self, populated_data_repo, schema_ref, timestamp):
@@ -937,3 +936,5 @@ class TestDataRepository:
                 del data_object.attrs['version_timestamp']
         populated_data_repo.add(data_object, versioning_on=True)
         sleep(0.001)
+
+    
