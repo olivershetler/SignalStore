@@ -18,7 +18,7 @@
                 "enum": [false]
             },
             "session_date": {},
-            "start_time": {},
+            "session_time": {},
             "duration": {
                 "type": "string"
             },
