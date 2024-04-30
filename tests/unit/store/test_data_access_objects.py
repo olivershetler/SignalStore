@@ -239,7 +239,7 @@ class TestDomainModelDAO:
         tor = timestamp + timedelta(seconds=2)
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=tod)
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure'), f'Expected exists to return False, got {populated_domain_model_dao.exists(schema_name="dimension_of_measure")}'
-        populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=tor)
+        populated_domain_model_dao.restore(schema_name='dimension_of_measure')
         assert populated_domain_model_dao.get(schema_name='dimension_of_measure') is not None
         assert populated_domain_model_dao.get(schema_name='dimension_of_measure')['schema_title'] == 'Dimension of Measure', f'Expected schema_title to be "Dimension of Measure", got "{populated_domain_model_dao.get(schema_name="dimension_of_measure")["schema_title"]}"'
 
@@ -248,16 +248,16 @@ class TestDomainModelDAO:
         tor = timestamp + timedelta(seconds=2)
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=tod)
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure')
-        populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=tor)
+        populated_domain_model_dao.restore(schema_name='dimension_of_measure')
         assert populated_domain_model_dao.get(schema_name='dimension_of_measure') is not None
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=tod)
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure')
-        populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=tor)
+        populated_domain_model_dao.restore(schema_name='dimension_of_measure')
+        assert populated_domain_model_dao.get(schema_name='dimension_of_measure') is not None
 
     def test_restore_2nd_most_recent_model_marked_for_deletion(self, populated_domain_model_dao, timestamp):
         tod1 = timestamp + timedelta(seconds=1)
         tod2 = timestamp + timedelta(seconds=1.5)
-        tor = timestamp + timedelta(seconds=2)
         dom_record = populated_domain_model_dao.get(schema_name='dimension_of_measure')
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=tod1)
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure')
@@ -265,7 +265,7 @@ class TestDomainModelDAO:
         assert populated_domain_model_dao.exists(schema_name='dimension_of_measure')
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=tod2)
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure')
-        populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=timestamp, nth_most_recent=2)
+        populated_domain_model_dao.restore(schema_name='dimension_of_measure', nth_most_recent=2)
         assert populated_domain_model_dao.get(schema_name='dimension_of_measure') is not None
         assert populated_domain_model_dao.get(schema_name='dimension_of_measure')['schema_title'] == 'Dimension of Measure', f'Expected schema_title to be "Dimension of Measure", got "{populated_domain_model_dao.get(schema_name="dimension_of_measure")["schema_title"]}"'
 
@@ -278,7 +278,7 @@ class TestDomainModelDAO:
             populated_domain_model_dao.add(document=dom_doc, timestamp=timestamp)
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=timestamp + timedelta(seconds=i+1))
         assert not populated_domain_model_dao.exists(schema_name='dimension_of_measure')
-        populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=timestamp, nth_most_recent=nth_most_recent)
+        populated_domain_model_dao.restore(schema_name='dimension_of_measure',  nth_most_recent=nth_most_recent)
         assert populated_domain_model_dao.get(schema_name='dimension_of_measure') is not None
         if nth_most_recent > 1:
             assert populated_domain_model_dao.get(schema_name='dimension_of_measure')['schema_title'] == f'Dimension of Measure V{nth_most_recent-1}', f'Expected schema_title to be "Dimension of Measure V{nth_most_recent-1}", got "{populated_domain_model_dao.get(schema_name="dimension_of_measure")["schema_title"]}"'
@@ -290,19 +290,19 @@ class TestDomainModelDAO:
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=timestamp)
         populated_domain_model_dao.add(document=dom_doc, timestamp=timestamp)
         with pytest.raises(MongoDAODocumentAlreadyExistsError):
-            populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=timestamp)
+            populated_domain_model_dao.restore(schema_name='dimension_of_measure')
 
-    def test_restore_model_that_was_not_marked_for_deletion(self, populated_domain_model_dao, timestamp):
+    def test_restore_model_that_was_not_marked_for_deletion(self, populated_domain_model_dao):
         with pytest.raises(MongoDAORangeError):
-            populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=timestamp)
+            populated_domain_model_dao.restore(schema_name='dimension_of_measure')
 
     def test_restore_model_with_bad_schema_name_argument(self, populated_domain_model_dao, timestamp):
         with pytest.raises(MongoDAOTypeError):
             populated_domain_model_dao.restore(schema_name=1, timestamp=timestamp)
 
-    def test_restore_model_with_bad_nth_most_recent_argument(self, populated_domain_model_dao, timestamp):
+    def test_restore_model_with_bad_nth_most_recent_argument(self, populated_domain_model_dao):
         with pytest.raises(MongoDAOTypeError):
-            populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=timestamp, nth_most_recent='1')
+            populated_domain_model_dao.restore(schema_name='dimension_of_measure', nth_most_recent='1')
 
     def test_restore_model_with_bad_timestamp_argument(self, populated_domain_model_dao):
         with pytest.raises(MongoDAOTypeError):
@@ -312,7 +312,7 @@ class TestDomainModelDAO:
     def test_restore_model_with_out_of_range_nth_most_recent_argument(self, populated_domain_model_dao, timestamp, n):
         populated_domain_model_dao.mark_for_deletion(schema_name='dimension_of_measure', timestamp=timestamp)
         with pytest.raises(MongoDAORangeError):
-            populated_domain_model_dao.restore(schema_name='dimension_of_measure', timestamp=timestamp, nth_most_recent=0)
+            populated_domain_model_dao.restore(schema_name='dimension_of_measure', nth_most_recent=n)
 
     # purge tests (test all expected behaviors of purge())
     # ----------------------------------------------------

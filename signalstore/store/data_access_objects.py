@@ -216,7 +216,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
             sort=[('time_of_removal', -1)])]
         return documents
 
-    def restore(self, timestamp, nth_most_recent=1,**kwargs):
+    def restore(self, nth_most_recent=1,**kwargs):
         """Restores a document.
         Arguments:
             timestamp {datetime.timestamp} -- The timestamp to restore the document with.
@@ -229,7 +229,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
             MongoDAORangeError -- If the nth_most_recent argument is out of range.
         Returns:
         """
-        self._check_args(timestamp=timestamp, nth_most_recent=nth_most_recent, **kwargs)
+        self._check_args(nth_most_recent=nth_most_recent, **kwargs)
         self._check_kwargs_are_only_index_args(**kwargs)
         # get the nth most recent version of the document with a numeric time_of_removal value
         documents = self._collection.find({'time_of_removal': {'$ne': None}, **kwargs}, {'_id': 0}, sort=[('time_of_removal', 1)])
@@ -552,8 +552,10 @@ class FileSystemDAO(AbstractDataAccessObject):
         Returns:
             list[dict] -- The list of deleted objects.
         """
-        self._check_args(time_threshold=time_threshold,
-                         data_adapter=data_adapter)
+        self._check_args(
+            time_threshold=time_threshold,
+            data_adapter=data_adapter
+            )
         if data_adapter is None:
             data_adapter = self._default_data_adapter
         glob_pattern = self._directory + '/*_time_of_removal_*' + data_adapter.file_extension

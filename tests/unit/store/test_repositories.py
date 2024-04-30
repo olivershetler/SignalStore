@@ -924,6 +924,14 @@ class TestDataRepository:
         elif isinstance(data_object, xr.DataArray):
             data_object.attrs['data_name'] = 'test_add'
         populated_data_repo.add(data_object, versioning_on=False)
+        # get the data object that was just added
+        try:
+            data_object = populated_data_repo.get(schema_ref=schema_ref, data_name="test_add", version_timestamp=0)
+            assert data_object is not None
+            assert populated_data_repo.exists(schema_ref=schema_ref, data_name="test_add", version_timestamp=0)
+        except Exception as e:
+            raise Exception(f"Error: {e}")
+
 
     @pytest.mark.parametrize("schema_ref", ['animal', 'session', 'spike_times', 'spike_waveforms'])
     def test_add_versioned_data_object_that_is_valid(self, populated_data_repo, schema_ref, timestamp):
@@ -964,6 +972,126 @@ class TestDataRepository:
     @pytest.mark.parametrize("bad_data_object", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
     def test_add_data_object_with_bad_data_object(self, populated_data_repo, bad_data_object):
         with pytest.raises(DataRepositoryTypeError):
-            ohe = populated_data_repo.add(bad_data_object, versioning_on=False)
+            populated_data_repo.add(bad_data_object, versioning_on=False)
             assert False, f"Should have raised a TypeError for data_object: {bad_data_object}"
 
+    # remove tests (test all expected behaviors of remove())
+    # -----------------------------------------------------
+    # Category 1: remove a data object that exists
+    # Test 1.1: remove an unversioned record data object (has_file=False) that exists
+    # Test 1.2: remove an unversioned data array object that exists (has_file=True)
+    # Test 1.3: remove a versioned data array object that exists
+    # Category 2: remove a data object that does not exist
+    # Test 2.1: remove a record that does not exist; check that it raises an error
+    # Test 2.2: remove a data array that does not exist (with no record); check that it raises an error
+    # Category 3: bad arguments
+    # Test 3.1: remove a data object with a bad schema_ref argument (error)
+    # Test 3.2: remove a data object with a bad data_name argument (error)
+    # Test 3.3: remove a data object with a bad version_timestamp argument (error)
+
+    def test_remove_unversioned_record_that_exists(self, populated_data_repo):
+        populated_data_repo.remove(schema_ref='animal', data_name='test', version_timestamp=0)
+
+    def test_remove_unversioned_data_array_that_exists(self, populated_data_repo):
+        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+
+    def test_remove_versioned_data_object_that_exists(self, populated_data_repo, timestamp, model_numpy_adapter):
+        ts = timestamp + timedelta(seconds=1)
+        populated_data_repo.remove(
+            schema_ref='numpy_test',
+            data_name='numpy_test',
+            version_timestamp=ts,
+            data_adapter=model_numpy_adapter
+            )
+
+    def test_remove_record_that_does_not_exist(self, populated_data_repo):
+        with pytest.raises(DataRepositoryNotFoundError):
+            populated_data_repo.remove(schema_ref='animal', data_name='does_not_exist', version_timestamp=0)
+            assert False, f"Should have raised a DataRepositoryError for schema_ref: animal and data_name: does_not_exist"
+
+    def test_remove_data_array_that_does_not_exist(self, populated_data_repo):
+        with pytest.raises(DataRepositoryNotFoundError):
+            populated_data_repo.remove(schema_ref='spike_waveforms', data_name='does_not_exist', version_timestamp=0)
+            assert False, f"Should have raised a DataRepositoryError for schema_ref: spike_waveforms and data_name: does_not_exist"
+
+    @pytest.mark.parametrize("bad_schema_ref", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
+    def test_remove_data_object_with_bad_schema_ref(self, populated_data_repo, bad_schema_ref):
+        with pytest.raises(DataRepositoryTypeError):
+            populated_data_repo.remove(schema_ref=bad_schema_ref, data_name='does_not_exist', version_timestamp=0)
+            assert False, f"Should have raised a TypeError for schema_ref: {bad_schema_ref}"
+
+    @pytest.mark.parametrize("bad_data_name", [None, 1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
+    def test_remove_data_object_with_bad_data_name(self, populated_data_repo, bad_data_name):
+        with pytest.raises(DataRepositoryTypeError):
+            populated_data_repo.remove(schema_ref='does_not_exist', data_name=bad_data_name, version_timestamp=0)
+            assert False, f"Should have raised a TypeError for data_name: {bad_data_name}"
+
+    @pytest.mark.parametrize("bad_version_timestamp", [None, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
+    def test_remove_data_object_with_bad_version_timestamp(self, populated_data_repo, bad_version_timestamp):
+        with pytest.raises(Exception):
+            populated_data_repo.remove(schema_ref='does_not_exist', data_name='does_not_exist', version_timestamp=bad_version_timestamp)
+            assert False, f"Should have raised an Exception for version_timestamp: {bad_version_timestamp}"
+
+    # test undo (test all expected behaviors of undo())
+    # ------------------------------------------------
+    # Category 1: undo adding
+    # Test 1.1: undo adding an unversioned record data object (has_file=False)
+    # Test 1.2: undo adding an unversioned data array object that exists (has_file=True)
+    # Test 1.3: undo adding a versioned data array object that exists
+    # Category 2: undo removing
+    # Test 2.1: undo removing an unversioned record data object (has_file=False)
+    # Test 2.2: undo removing an unversioned data array object that exists (has_file=True)
+    # Test 2.3: undo removing a versioned data array object that exists
+    # Category 3: undoing a change that does not exist
+    # Test 3.1: undoing a change that does not exist
+    # Category 4: bad arguments
+
+    def test_undo_adding_unversioned_record_that_exists(self, populated_data_repo):
+        # add a record
+        record = populated_data_repo.get(schema_ref='animal', data_name='test', version_timestamp=0)
+        record['data_name'] = 'test_undo_adding'
+        populated_data_repo.add(record, versioning_on=False)
+        # check that the record exists
+        assert populated_data_repo.exists(schema_ref='animal', data_name='test_undo_adding')
+        # undo the add
+        populated_data_repo.undo()
+        # confirm that the record does not exist
+        assert not populated_data_repo.exists(schema_ref='animal', data_name='test_undo_adding')
+
+    def test_undo_adding_unversioned_data_array_that_exists(self, populated_data_repo):
+        # add a data array
+        data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        data_array.attrs['data_name'] = 'test_undo_adding'
+        populated_data_repo.add(data_array, versioning_on=False)
+        # check that the data array exists
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_adding')
+        # undo the add
+        populated_data_repo.undo()
+        # confirm that the data array does not exist
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_adding')
+
+    def test_undo_adding_versioned_data_object_that_exists(self, populated_data_repo, model_numpy_adapter):
+        # add a data array
+        data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        data_array.attrs['data_name'] = 'test_undo_versioned_adding'
+        populated_data_repo.add(data_array, versioning_on=True)
+        # find the data array and get its timestamp
+        data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test_undo_versioned_adding'})[0]
+        # check that the data array exists
+        print(data_array_record)
+        vts = data_array_record['version_timestamp']
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts)
+        # undo the add
+        populated_data_repo.undo()
+        # confirm that the data array does not exist
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts)
+
+    def test_undo_removing_unversioned_record_that_exists(self, populated_data_repo):
+        # remove a record
+        populated_data_repo.remove(schema_ref='animal', data_name='test', version_timestamp=0)
+        # check that the record does not exist
+        assert not populated_data_repo.exists(schema_ref='animal', data_name='test')
+        # undo the remove
+        populated_data_repo.undo()
+        # confirm that the record exists
+        assert populated_data_repo.exists(schema_ref='animal', data_name='test')

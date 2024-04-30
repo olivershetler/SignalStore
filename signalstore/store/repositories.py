@@ -307,7 +307,7 @@ class DomainModelRepository(AbstractQueriableRepository):
     def add(self, model):
         """Add a single domain model object to the repository."""
         self._check_args(model=model)
-        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "added", schema_name=model["schema_name"])
+        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "added", schema_name=model["schema_name"], has_file=False)
         # validate the model
         self._validate(model)
         if self._dao.exists(schema_name=model["schema_name"]):
@@ -322,7 +322,7 @@ class DomainModelRepository(AbstractQueriableRepository):
     def remove(self, schema_name):
         """Mark a single domain model object for deletion; remove it from the scope of get and list searches."""
         self._check_args(schema_name=schema_name)
-        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "removed", schema_name=schema_name)
+        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "removed", schema_name=schema_name, has_file=False)
         if not self._dao.exists(schema_name=schema_name):
             raise DomainRepositoryModelNotFoundError(f"A model with schema_name '{schema_name}' does not exist in the repository.")
         try:
@@ -343,7 +343,6 @@ class DomainModelRepository(AbstractQueriableRepository):
         now = self.timestamp
         if ohe.operation=="removed":
             self._dao.restore(schema_name = ohe.schema_name,
-                              timestamp = now,
                               nth_most_recent = 1)
         elif ohe.operation=="added":
             self._dao.mark_for_deletion(schema_name = ohe.schema_name,
@@ -505,13 +504,17 @@ class DataRepository(AbstractQueriableRepository):
 
     def find(self, filter=None, projection=None, sort=None, limit=None, get_data=False):
         """Apply filtering to get multiple records fitting a description."""
-        self._check_args(filter=filter,
-                         projection=projection)
-        records = self._records.find(filter, projection)
-        if sort is not None:
-            records = records.sort(sort)
-        if limit is not None:
-            records = records.limit(limit)
+        self._check_args(
+            filter=filter,
+            projection=projection)
+        if sort is not None and limit is not None:
+            records = self._records.find(filter=filter, projection=projection).sort(sort).limit(limit)
+        elif sort is not None:
+            records = self._records.find(filter=filter, projection=projection).sort(sort)
+        elif limit is not None:
+            records = self._records.find(filter=filter, projection=projection).limit(limit)
+        else:
+            records = self._records.find(filter=filter, projection=projection)
         # validate the records
         for record in records:
             self._validate(record)
@@ -519,17 +522,19 @@ class DataRepository(AbstractQueriableRepository):
 
     def exists(self, schema_ref, data_name, version_timestamp=0):
         """Check if a record exists."""
-        self._check_args(schema_ref=schema_ref,
-                         data_name=data_name,
-                         version_timestamp=version_timestamp)
+        self._check_args(
+            schema_ref=schema_ref,
+            data_name=data_name,
+            version_timestamp=version_timestamp)
         record_exists = self._records.exists(version_timestamp=version_timestamp, schema_ref=schema_ref, data_name=data_name)
         return record_exists
 
     def has_file(self, schema_ref, data_name, version_timestamp=0):
         """Check if a record has data."""
-        self._check_args(schema_ref=schema_ref,
-                         data_name=data_name,
-                         version_timestamp=version_timestamp)
+        self._check_args(
+            schema_ref=schema_ref,
+            data_name=data_name,
+            version_timestamp=version_timestamp)
         has_file = self._data.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         return has_file
 
@@ -541,35 +546,56 @@ class DataRepository(AbstractQueriableRepository):
                 object["version_timestamp"] = add_timestamp
             elif not versioning_on:
                 object["version_timestamp"] = 0
+            ohe = self._add_record(
+                object=object,
+                add_timestamp=add_timestamp,
+                versioning_on=versioning_on
+                )
+            return ohe
         elif hasattr(object, "attrs"):
             if versioning_on and "version_timestamp" not in object.attrs:
                 object.attrs["version_timestamp"] = add_timestamp
             elif not versioning_on:
                 object.attrs["version_timestamp"] = 0
+            ohe = self._add_data_with_file(
+                object=object,
+                add_timestamp=add_timestamp,
+                versioning_on=versioning_on,
+                data_adapter=data_adapter
+                )
+            return ohe
         else:
             raise DataRepositoryTypeError(f"object must be a dict or an object with an 'attrs' attribute, not {type(object)}")
-        if data_adapter is None:
-            if isinstance(object, dict):
-                # just add the record and do not add any files
-                ohe = OperationHistoryEntry(
-                    add_timestamp,
-                    self._records.collection_name,
-                    "added",
-                    schema_ref=object["schema_ref"],
-                    data_name=object["data_name"],
-                    version_timestamp=object["version_timestamp"],
-                    has_file = False)
-                self._validate(object)
-                self._operation_history.append(ohe)
-                return ohe
-            else:
-                data_adapter = self._data._default_data_adapter
+
+    def _add_record(self, object, add_timestamp, versioning_on):
         ohe = OperationHistoryEntry(
-            self.timestamp,
+                add_timestamp,
+                self._records.collection_name,
+                "added",
+                schema_ref=object["schema_ref"],
+                data_name=object["data_name"],
+                version_timestamp=object["version_timestamp"],
+                data_adapter = None,
+                has_file = False)
+        self._validate(object)
+        self._records.add(
+                    document=object,
+                    timestamp=add_timestamp,
+                    versioning_on=versioning_on
+                    )
+        self._operation_history.append(ohe)
+        return ohe
+
+    def _add_data_with_file(self, object, add_timestamp, versioning_on, data_adapter=None):
+        if data_adapter is None:
+            data_adapter = self._data._default_data_adapter
+        ohe = OperationHistoryEntry(
+            add_timestamp,
             self._records.collection_name, "added",
             schema_ref=object.attrs["schema_ref"],
             data_name=object.attrs["data_name"],
             has_file = True,
+            data_adapter = data_adapter,
             version_timestamp=object.attrs["version_timestamp"])
         self._validate(object.attrs)
         self._records.add(
@@ -584,19 +610,31 @@ class DataRepository(AbstractQueriableRepository):
         self._operation_history.append(ohe)
         return ohe
 
-    def remove(self, schema_ref, data_name, version_timestamp=0):
+    def remove(self, schema_ref, data_name, version_timestamp=0, data_adapter=None):
         """Mark a single record for deletion; remove it from the scope of get and list searches."""
         self._check_args(
             schema_ref=schema_ref,
             data_name=data_name,
             version_timestamp=version_timestamp)
-        ohe = OperationHistoryEntry(self.timestamp, self._records.collection_name, "removed", schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         if not self._records.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp):
             raise DataRepositoryNotFoundError(f"A record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' does not exist in the repository.")
         has_file = self._data.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
+
+        ohe = OperationHistoryEntry(
+            self.timestamp,
+            self._records.collection_name,
+            "removed", schema_ref=schema_ref,
+            data_name=data_name,
+            version_timestamp=version_timestamp,
+            has_file=has_file,
+            data_adapter=data_adapter
+            )
+
         if has_file:
-            self._data.mark_for_deletion(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, timestamp=ohe.timestamp)
-        self._records.mark_for_deletion(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, timestamp=ohe.timestamp, has_file=has_file)
+            if data_adapter is None:
+                data_adapter = self._data._default_data_adapter
+            self._data.mark_for_deletion(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, time_of_removal=ohe.timestamp, data_adapter=data_adapter)
+        self._records.mark_for_deletion(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, timestamp=ohe.timestamp)
         self._operation_history.append(ohe)
         return ohe
 
@@ -606,33 +644,34 @@ class DataRepository(AbstractQueriableRepository):
             ohe = self._operation_history[-1]
         except IndexError:
             return None
-        now = self.timestamp
         if ohe.operation=="removed":
             self._records.restore(
                 schema_ref = ohe.schema_ref,
                 data_name = ohe.data_name,
                 version_timestamp = ohe.version_timestamp,
-                timestamp = now,
                 nth_most_recent = 1
                 )
-            self._data.restore(
-                schema_ref = ohe.schema_ref,
-                data_name = ohe.data_name,
-                version_timestamp = ohe.version_timestamp,
-                timestamp = now,
-                nth_most_recent = 1
-                )
+            if ohe.has_file:
+                self._data.restore(
+                    schema_ref = ohe.schema_ref,
+                    data_name = ohe.data_name,
+                    version_timestamp = ohe.version_timestamp,
+                    data_adapter = ohe.data_adapter,
+                    nth_most_recent = 1
+                    )
         elif ohe.operation=="added":
             self._records.mark_for_deletion(schema_ref = ohe.schema_ref,
                                             data_name = ohe.data_name,
                                             version_timestamp = ohe.version_timestamp,
-                                            timestamp = ohe.timestamp)
+                                            timestamp = ohe.timestamp
+                                            )
             if ohe.has_file:
                 self._data.mark_for_deletion(
                     schema_ref = ohe.schema_ref,
                     data_name = ohe.data_name,
                     version_timestamp = ohe.version_timestamp,
-                    time_of_removal = ohe.timestamp
+                    time_of_removal = ohe.timestamp,
+                    data_adapter = ohe.data_adapter
                     )
         # remove the operation history entry after successfully undoing the operation
         self._operation_history.pop()
@@ -784,7 +823,7 @@ class InMemoryObjectRepository(AbstractRepository):
         self._check_args(schema_ref=schema_ref, object_name=object_name, object=object)
         if self._dao.exists(schema_ref, object_name):
             raise InMemoryRepositoryAlreadyExistsError(f"An object with data_name '{object_name}' already exists in the repository.")
-        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "added", schema_ref=schema_ref, object_name=object_name)
+        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "added", schema_ref=schema_ref, object_name=object_name, has_file=False)
         self._dao.add(schema_ref, object_name, object)
         self._operation_history.append(ohe)
         return ohe
@@ -792,7 +831,7 @@ class InMemoryObjectRepository(AbstractRepository):
     def remove(self, schema_ref, object_name):
         """Mark a single object for deletion; remove it from the scope of get and list searches."""
         self._check_args(schema_ref=schema_ref, object_name=object_name)
-        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "removed", schema_ref=schema_ref, object_name=object_name)
+        ohe = OperationHistoryEntry(self.timestamp, self._dao.collection_name, "removed", schema_ref=schema_ref, object_name=object_name, has_file=False)
         self._dao.remove(schema_ref, object_name)
         self._operation_history.append(ohe)
         return ohe
