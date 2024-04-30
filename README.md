@@ -23,7 +23,7 @@ from pymongo import MongoClient
 
 og_filesystem = fsspec.filesystem('file')
 root = '.'
-filesystem = fsspec.DirFileSystem(roog, og_filesystem)
+filesystem = fsspec.DirFileSystem(root, og_filesystem)
 client = MongoClient('localhost', 27017)
 
 memory_store = dict()
