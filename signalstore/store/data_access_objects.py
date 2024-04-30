@@ -430,7 +430,7 @@ class FileSystemDAO(AbstractDataAccessObject):
         data_object = data_adapter.read_file(path)
         data_object = self._deserialize(data_object)
         dims = data_object.attrs["data_dimensions"]
-        print(f"DIMS GOT: {dims}")
+        # print(f"DIMS GOT: {dims}")
         return data_object
 
     def exists(self, schema_ref, data_name, version_timestamp=None, data_adapter=None):
@@ -485,14 +485,14 @@ class FileSystemDAO(AbstractDataAccessObject):
                 f'Cannot add object with path "{path}" because it already exists in repository.'
             )
         dims = data_object.attrs["data_dimensions"]
-        print(f"DIMS TO ADD: {dims}")
+        # print(f"DIMS TO ADD: {dims}")
         data_object = self._serialize(data_object)
         data_adapter.write_file(path=path, data_object=data_object)
         dims = data_object.attrs["data_dimensions"]
-        print(f"BEFORE CAUTION DESER: {dims}")
+        # print(f"BEFORE CAUTION DESER: {dims}")
         self._deserialize(data_object) # undo the serialization in case the object is mutated
         dims = data_object.attrs["data_dimensions"]
-        print(f"AFTER CAUTION DESER: {dims}")
+        # print(f"AFTER CAUTION DESER: {dims}")
         return None
 
     def mark_for_deletion(self, schema_ref, data_name, time_of_removal, version_timestamp=None, data_adapter=None):
@@ -674,7 +674,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             if isinstance(value, list):
                 attrs[key] = np.array(value)
         data_object.attrs = attrs
-        print(f"SERIALIZED: {attrs}", flush=True)
+        # print(f"SERIALIZED: {attrs}", flush=True)
         return data_object
 
     def _deserialize(self, data_object):
@@ -698,7 +698,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             elif isinstance(value, np.ndarray):
                 attrs[key] = value.tolist()
                 ak = attrs[key]
-                print(f"TOLIST?: {ak}", flush=True)
+                # print(f"TOLIST?: {ak}", flush=True)
         data_object.attrs = attrs
         return data_object
 
