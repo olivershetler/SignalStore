@@ -474,10 +474,12 @@ class DataRepository(AbstractQueriableRepository):
         # if argument is a dict, try unpacking it
         if not nth_most_recent is None and nth_most_recent < 1:
             raise DataRepositoryRangeError(f"nth_most_recent must be an integer greater than 0, not {nth_most_recent}.")
-        self._check_args(schema_ref=schema_ref,
-                         data_name=data_name,
-                         version_timestamp=version_timestamp)
-        if nth_most_recent is not None and version_timestamp is not None:
+        self._check_args(
+            schema_ref=schema_ref,
+            data_name=data_name,
+            version_timestamp=version_timestamp
+            )
+        if nth_most_recent is not None and version_timestamp==0:
             record = self._records.find(filter={"schema_ref": schema_ref, "data_name": data_name}, sort=[("version_timestamp", -1)], limit=nth_most_recent)
         else:
             record = self._records.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
@@ -490,7 +492,8 @@ class DataRepository(AbstractQueriableRepository):
                 schema_ref=schema_ref,
                 data_name=data_name,
                 version_timestamp=version_timestamp,
-                data_adapter=data_adapter)
+                data_adapter=data_adapter
+                )
             if data is None:
                 raise DataRepositoryNotFoundError(f"Data for record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' does not exist in the repository. The record exists and has the 'has_file' attribute set to True, but the file data access object returned None.")
             # check that data.attrs is a subset of the record's attrs

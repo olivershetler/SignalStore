@@ -1077,14 +1077,19 @@ class TestDataRepository:
         populated_data_repo.add(data_array, versioning_on=True)
         # find the data array and get its timestamp
         data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test_undo_versioned_adding'})[0]
+        try:
+            data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=data_array_record['version_timestamp'], data_adapter=model_numpy_adapter)
+            assert data_array is not None, f"Should have returned a data array for schema_ref: spike_waveforms and data_name: test_undo_versioned_adding"
+        except Exception as e:
+            raise Exception(f"Error: {e}")
         # check that the data array exists
         print(data_array_record)
         vts = data_array_record['version_timestamp']
-        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts)
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts), "Assertion 1: The data array should exist."
         # undo the add
         populated_data_repo.undo()
         # confirm that the data array does not exist
-        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts)
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts), "Assertion 2: The data array should not exist."
 
     def test_undo_removing_unversioned_record_that_exists(self, populated_data_repo):
         # remove a record
@@ -1095,3 +1100,87 @@ class TestDataRepository:
         populated_data_repo.undo()
         # confirm that the record exists
         assert populated_data_repo.exists(schema_ref='animal', data_name='test')
+
+    def test_undo_removing_unversioned_data_array_that_exists(self, populated_data_repo):
+        # remove a data array
+        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        # check that the data array does not exist
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test')
+        # undo the remove
+        populated_data_repo.undo()
+        # confirm that the data array exists
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test')
+
+    def test_undo_removing_versioned_data_object_that_exists(self, populated_data_repo, timestamp, model_numpy_adapter):
+        # remove a data array
+        data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        populated_data_repo.add(data_array, versioning_on=True)
+        # find the data array and get its timestamp
+        data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test'})[0]
+        vts = data_array_record['version_timestamp']
+        # check that the data array exists
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+        # remove the data array
+        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts, data_adapter=model_numpy_adapter)
+        # check that the data array does not exist
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+        # undo the remove
+        populated_data_repo.undo()
+        # confirm that the data array exists
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+
+    def test_undoing_a_change_that_does_not_exist(self, populated_data_repo):
+        ohe = populated_data_repo.undo()
+        assert ohe is None, f"Should have returned None for undoing a change that does not exist, but returned: {ohe}"
+
+    # test undo_all (test all expected behaviors of undo_all())
+    # --------------------------------------------------------
+    # Category 1: undo all changes
+    # Test 1.1: undo all changes
+    # Test 1.2: undo all changes when there are no changes to undo
+
+    def test_undo_all_changes(self, populated_data_repo, timestamp, model_numpy_adapter):
+        # add a record
+        record = populated_data_repo.get(schema_ref='animal', data_name='test', version_timestamp=0)
+        record['data_name'] = 'test_undo_all'
+        populated_data_repo.add(record, versioning_on=False)
+        # add a data array
+        data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        data_array.attrs['data_name'] = 'test_undo_all'
+        populated_data_repo.add(data_array, versioning_on=False)
+        # add a versioned data array
+        data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        populated_data_repo.add(data_array, versioning_on=True)
+        # find the data array and get its timestamp
+        data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test'})[0]
+        vts = data_array_record['version_timestamp']
+        # check that the data array exists
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+        # undo all changes
+        undone_operations = populated_data_repo.undo_all()
+        # confirm that the number of undone operations is correct
+        assert len(undone_operations) == 3
+        # confirm that the record does not exist
+        assert not populated_data_repo.exists(schema_ref='animal', data_name='test_undo_all')
+        # confirm that the data array does not exist
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_all')
+        # confirm that the versioned data array does not exist
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+
+    def test_undo_all_changes_when_there_are_no_changes_to_undo(self, populated_data_repo):
+        undone_operations = populated_data_repo.undo_all()
+        assert len(undone_operations) == 0, f"Should have returned an empty list, but returned: {undone_operations}"
+
+    # test list_marked_for_deletion (test all expected behaviors of list_marked_for_deletion())
+    # ------------------------------------------------------------------------------------------
+    # Category 1: list data objects that are marked for deletion
+    # Test 1.1: list all data objects that are marked for deletion using time_threshold of None
+    # Test 1.2: list data objects that are marked for deletion after a time using a time_threshold
+    # Test 1.3: list all data objects that are marked for deletion using time_threshold of None when there are no data objects marked for deletion (empty list)
+    # Category 2: bad arguments
+    # Test 2.1: time_threshold is not a datetime object (several tests / params) (error)
+
+
+
+
+

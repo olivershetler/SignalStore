@@ -707,6 +707,7 @@ def populated_data_repo(populated_domain_repo, populated_record_dao, populated_f
         mutable_model_helper.attrs["has_file"] = True
         mutable_model_helper.train(i)
         data_repo.add(object=mutable_model_helper, data_adapter=model_numpy_adapter, versioning_on=True)
+    data_repo.clear_operation_history()
 
 
     return data_repo
@@ -724,6 +725,7 @@ def populated_data_repo_with_invalid_records(populated_domain_repo, populated_re
         mutable_model_helper.train(i)
         data_repo.add(object=mutable_model_helper, data_adapter=model_numpy_adapter, versioning_on=True)
         sleep(0.001)
+    data_repo.clear_operation_history()
 
     return data_repo
 

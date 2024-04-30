@@ -117,10 +117,13 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         """
         self._check_kwargs_are_only_index_args(**kwargs)
         self._check_args(version_timestamp=version_timestamp,**kwargs)
-        document = self._collection.find_one({'time_of_removal': None,
-                                              'version_timestamp': version_timestamp,
-                                              **kwargs},
-                                              {'_id': 0})
+        document = self._collection.find_one(
+            {
+                'time_of_removal': None,
+                'version_timestamp': version_timestamp,
+                **kwargs
+            },
+            {'_id': 0})
         if document is None:
             return None
         else:
