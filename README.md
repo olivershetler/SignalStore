@@ -66,3 +66,7 @@ with uow_provider('myproject') as uow:
 1D data (e.g. spike labels or spike times) have to be saved as 2D with an extra dimension e.g. (index, 1)
 This is because of the xarray function "is_list_of_strings" that requires the extra dimension
 1D data will be encoded as 2D with the extra dimension termed "1"
+
+MongoDB stores datetime objects as UTC, so when you query for a datetime object, you need to convert it to UTC first.
+
+MongoDB stores datetime objects at millisecond precision. You can use a more precise datetime object for queries, but it will be truncated to millisecond precision. You will not get an exact match if you assert that the original datetime object is equal to the one stored in the database. For speed, the filesystem stores time_of_removal and version_timestamp as microsecond precision integers in filenames, but the metadata in MongoDB is stored as millisecond precision datetime objects. Use full precision for queries to get the right results, but beware that adding to MongoDB and getting back from MongoDB will truncate the precision to milliseconds. 

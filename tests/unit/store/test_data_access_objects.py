@@ -898,7 +898,7 @@ class TestFileSystemDAO:
             to_delete.attrs['schema_ref'] = f'test{i}'
             file_dao.add(data_object=to_delete)
             assert file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=0)
-            file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.now().astimezone())
+            file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.now().astimezone(timezone.utc))
         count = file_dao.purge(time_threshold=None)
         assert count == 10
         assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
@@ -917,7 +917,7 @@ class TestFileSystemDAO:
             file_dao.add(data_object=to_delete)
             assert file_dao.exists(schema_ref=f'test{i}', data_name=f'test{i}', version_timestamp=0)
             file_dao.mark_for_deletion(schema_ref=f'test{i}', data_name=f'test{i}', time_of_removal=datetime.now().astimezone())
-        count = file_dao.purge(time_threshold=datetime.now().astimezone())
+        count = file_dao.purge(time_threshold=datetime.now().astimezone(timezone.utc))
         assert count == 10
         assert not file_dao.exists(schema_ref='test', data_name='test', version_timestamp=0)
         for i in range(9):

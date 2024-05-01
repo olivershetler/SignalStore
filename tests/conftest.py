@@ -38,8 +38,6 @@ from signalstore.operations.helpers.abstract_helper import AbstractMutableHelper
 from datetime import datetime, timezone, timedelta
 
 
-
-
 # ==========================================================
 # ==========================================================
 # Utility Fixtures

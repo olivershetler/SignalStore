@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 import os
-import glob
 import re
-import xarray as xr
 import numpy as np
-import fsspec
-import gc # import garbage collector for memory management
 import json
 import traceback
 from time import sleep
+import xarray as xr
 
 from signalstore.store.store_errors import *
 
@@ -381,7 +378,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
             return 0
         else:
             try:
-                return value
+                return value.astimezone(timezone.utc)
             except AttributeError:
                 raise MongoDAOTypeError(
                     f"Invalid type {type(value)} for argument version_timestamp. Must be of type {type(datetime.now(timezone.utc))}."
@@ -392,7 +389,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
             return 0
         else:
             try:
-                return value
+                return value.replace(tzinfo=timezone.utc) # we don't want to shift the time twice, since it's already in UTC (MongoDB only stores UTC time)
             except AttributeError:
                 raise MongoDAOTypeError(
                     f"Invalid type {type(value)} for argument version_timestamp. Must be of type {type(datetime.now(timezone.utc))}."
@@ -455,23 +452,45 @@ class FileSystemDAO(AbstractDataAccessObject):
         path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
         if not self._fs.exists(path):
             # if the version_timestamp was specified, that's the only version we want to get
-            # if it doesn't exist, we return None
-            if version_timestamp != 0:
-                return None
-            basename = self.make_base_filename(schema_ref, data_name)
-            pattern = self._directory + '/' + basename + '*_version_*' + data_adapter.file_extension
-            glob = self._fs.glob(pattern)
-            # filter out the paths that have a time_of_removal value
-            paths = list(filter(lambda path: '_time_of_removal_' not in path, glob))
-            if len(paths) == 0:
-                return None
-            else:
-                # get the most recent version
+            # if it doesn't exist, we check if the precision was too high
+            if isinstance(version_timestamp, datetime):
+                # try searching for the most recent version that matches up to millisecond precision
+                ms_vts = str(datetime_to_microseconds(version_timestamp))[:-3]
+                # find any file matching __version_{ms_vts} in the filename
+                pattern = self._directory + '/' + self.make_base_filename(schema_ref, data_name) + f'__version_{ms_vts}[0-9][0-9][0-9]' + data_adapter.file_extension
+                glob = self._fs.glob(pattern)
+                paths = list(filter(lambda path: '_time_of_removal_' not in path, glob))
+                # sort by version
                 paths.sort()
-                try:
-                    path = paths[-nth_most_recent]
-                except IndexError:
+                if len(glob) == 0:
+                    wrong_file_pattern = pattern = self._directory + '/' + self.make_base_filename(schema_ref, data_name) + f'__version_{ms_vts}[0-9][0-9][0-9]*'
+                    wrong_file_glob = self._fs.glob(wrong_file_pattern)
+                    bad_paths = list(filter(lambda path: '_time_of_removal_' not in path, wrong_file_glob))
+                    if len(bad_paths) == 0:
+                        return None
+                    else:
+                        raise FileSystemDAOFileNotFoundError(
+                            f"Cannot find a file fitting any pattern like {pattern}. However, there may be a file with a different file extension matching the pattern. The following files were found: {bad_paths}."
+                        )
                     return None
+                else:
+                    path = glob[0]
+            # if the version_timestamp was 0 (not specified) then we get the nth_most_recent not deleted one
+            else:
+                basename = self.make_base_filename(schema_ref, data_name)
+                pattern = self._directory + '/' + basename + '*_version_*' + data_adapter.file_extension
+                glob = self._fs.glob(pattern)
+                # filter out the paths that have a time_of_removal value
+                paths = list(filter(lambda path: '_time_of_removal_' not in path, glob))
+                if len(paths) == 0:
+                    return None
+                else:
+                    # get the most recent version
+                    paths.sort()
+                    try:
+                        path = paths[-nth_most_recent]
+                    except IndexError:
+                        return None
         data_object = data_adapter.read_file(path)
         data_object = self._deserialize(data_object)
         return data_object
@@ -530,6 +549,7 @@ class FileSystemDAO(AbstractDataAccessObject):
                 f'Cannot add object with path "{path}" because it already exists in repository.'
             )
         data_object = self._serialize(data_object)
+        #get os environment variable 'DEBUG' to check if we should print the data_object
         data_adapter.write_file(path=path, data_object=data_object)
         self._deserialize(data_object) # undo the serialization in case the object is mutated
         return None
@@ -631,7 +651,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             data_adapter = self._default_data_adapter
         # get the nth most recent version of the object with a numeric time_of_removal value
         basefilename = self.make_base_filename(schema_ref, data_name, version_timestamp)
-        pattern = self._directory + "/" + basefilename + '*_time_of_removal_*' + data_adapter.file_extension
+        pattern = self._directory + "/" + basefilename + '__time_of_removal_*' + data_adapter.file_extension
         glob = self._fs.glob(pattern)
         paths = list(sorted(glob))
         if len(paths) == 0:

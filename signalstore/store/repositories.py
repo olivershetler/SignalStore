@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 import jsonschema
 import json
 from datetime import datetime
+from time import sleep
 
 
 # ================================
@@ -481,7 +482,8 @@ class DataRepository(AbstractQueriableRepository):
             version_timestamp=version_timestamp
             )
         if nth_most_recent is not None and version_timestamp==0:
-            record = self._records.find(filter={"schema_ref": schema_ref, "data_name": data_name}, sort=[("version_timestamp", -1)], limit=nth_most_recent)
+            record = self._records.find(filter={"schema_ref": schema_ref, "data_name": data_name}, sort=[("version_timestamp", 1)], limit=nth_most_recent)[-1]
+            version_timestamp = record.get("version_timestamp")
         else:
             record = self._records.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         if record is None:
@@ -496,7 +498,7 @@ class DataRepository(AbstractQueriableRepository):
                 data_adapter=data_adapter
                 )
             if data is None:
-                raise DataRepositoryNotFoundError(f"Data for record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' does not exist in the repository. The record exists and has the 'has_file' attribute set to True, but the file data access object returned None.")
+                raise DataRepositoryNotFoundError(f"Data for record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' is missing its file. The record exists and has the 'has_file' attribute set to True, but the file data access object returned None.")
             # check that data.attrs is a subset of the record's attrs
             attr_keys = set(data.attrs.keys())
             record_keys = set(record.keys())
@@ -523,7 +525,20 @@ class DataRepository(AbstractQueriableRepository):
         # validate the records
         for record in records:
             self._validate(record)
-        return records
+        if get_data:
+            data = []
+            for record in records:
+                if record.get("has_file"):
+                    schema_ref = record.get("schema_ref")
+                    data_name = record.get("data_name")
+                    version_timestamp = record.get("version_timestamp")
+                    data_object = self._data.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
+                    data.append(data_object)
+                else:
+                    data.append(None)
+                return data
+        else:
+            return records
 
     def exists(self, schema_ref, data_name, version_timestamp=0):
         """Check if a record exists."""
@@ -546,11 +561,14 @@ class DataRepository(AbstractQueriableRepository):
     def add(self, object, data_adapter=None, versioning_on=False):
         """Add a single object to the repository."""
         add_timestamp = self.timestamp()
+        dttype = type(datetime.now().astimezone())
         if isinstance(object, dict):
-            if versioning_on and "version_timestamp" not in object:
+            if versioning_on and not isinstance(object.get("version_timestamp"), dttype):
                 object["version_timestamp"] = add_timestamp
             elif not versioning_on:
                 object["version_timestamp"] = 0
+            elif not isinstance(object.get("version_timestamp"), dttype):
+                raise DataRepositoryTypeError(f"'version_timestamp' must be a {dttype} object or the integer 0, not {type(object.get('version_timestamp'))}.")
             ohe = self._add_record(
                 object=object,
                 add_timestamp=add_timestamp,
@@ -558,10 +576,12 @@ class DataRepository(AbstractQueriableRepository):
                 )
             return ohe
         elif hasattr(object, "attrs"):
-            if versioning_on and "version_timestamp" not in object.attrs:
+            if versioning_on and not isinstance(object.attrs.get("version_timestamp"), dttype):
                 object.attrs["version_timestamp"] = add_timestamp
             elif not versioning_on:
                 object.attrs["version_timestamp"] = 0
+            elif not isinstance(object.attrs.get("version_timestamp"), dttype):
+                raise DataRepositoryTypeError(f"'version_timestamp' must be a {dttype} object or the integer 0, not {type(object.attrs.get('version_timestamp'))}.")
             ohe = self._add_data_with_file(
                 object=object,
                 add_timestamp=add_timestamp,
@@ -601,7 +621,8 @@ class DataRepository(AbstractQueriableRepository):
             data_name=object.attrs["data_name"],
             has_file = True,
             data_adapter = data_adapter,
-            version_timestamp=object.attrs["version_timestamp"])
+            version_timestamp=object.attrs["version_timestamp"]
+            )
         self._validate(object.attrs)
         self._records.add(
             document=object.attrs,
@@ -716,7 +737,6 @@ class DataRepository(AbstractQueriableRepository):
         """Purge (permanently delete) records marked for deletion."""
         self._records.purge(time_threshold=time_threshold)
         self._data.purge(time_threshold=time_threshold)
-
 
     def _validate(self, record):
         """Validate a single object prior to adding it into the repository."""

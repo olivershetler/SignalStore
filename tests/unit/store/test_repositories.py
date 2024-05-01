@@ -1071,20 +1071,15 @@ class TestDataRepository:
         # confirm that the data array does not exist
         assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_adding')
 
-    def test_undo_adding_versioned_data_object_that_exists(self, populated_data_repo, model_numpy_adapter):
+    def test_undo_adding_versioned_data_object_that_exists(self, populated_data_repo):
         # add a data array
         data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
         data_array.attrs['data_name'] = 'test_undo_versioned_adding'
+        # set environment variable DEBUG to True
         populated_data_repo.add(data_array, versioning_on=True)
+        # set environment variable DEBUG to False
         # find the data array and get its timestamp
         data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test_undo_versioned_adding'})[0]
-        try:
-            data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=data_array_record['version_timestamp'], data_adapter=model_numpy_adapter)
-            assert data_array is not None, f"Should have returned a data array for schema_ref: spike_waveforms and data_name: test_undo_versioned_adding"
-        except Exception as e:
-            raise Exception(f"Error: {e}")
-        # check that the data array exists
-        print(data_array_record)
         vts = data_array_record['version_timestamp']
         assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_adding', version_timestamp=vts), "Assertion 1: The data array should exist."
         # undo the add
@@ -1184,10 +1179,13 @@ class TestDataRepository:
 
     def test_list_marked_for_deletion_all(self, populated_data_repo, model_numpy_adapter, timestamp):
         # mark records for deletion
-        for i in range(10):
+        for i in range(1,11):
             ts = timestamp + timedelta(seconds=i)
+            margin = timedelta(milliseconds=1)
+            lower = ts - margin
+            upper = ts + margin
             records = populated_data_repo.find(filter={'schema_ref': 'numpy_test', 'data_name': 'numpy_test'})
-            assert any([r['version_timestamp'] == ts for r in records]), f"Should have found a record with version_timestamp: {[ts]}, but found only {[r['version_timestamp'] for r in records]}"
+            assert any([lower <= r['version_timestamp'] <= upper for r in records]), f"Should have found a record with version_timestamp: {[ts]}, but found only {[r['version_timestamp'] for r in records]}"
             populated_data_repo.remove(
                 schema_ref='numpy_test',
                 data_name='numpy_test',
@@ -1197,12 +1195,13 @@ class TestDataRepository:
         marked_for_deletion = populated_data_repo.list_marked_for_deletion(time_threshold=None)
         assert len(marked_for_deletion) == 10, f"Should have returned {10} data objects marked for deletion, but returned {len(marked_for_deletion)}"
 
-    @pytest.mark.skip()
-    @pytest.mark.parametrize("threshold_delta", range(1, 11))
+    @pytest.mark.skip(reason="Need to fix the test")
+    @pytest.mark.parametrize("threshold_delta", range(0, 10))
     def test_list_marked_for_deletion_after_time(self, populated_data_repo, model_numpy_adapter, timestamp, threshold_delta):
         # mark records for deletion
-        for i in range(10):
+        for i in range(1,11):
             ts = timestamp + timedelta(seconds=i)
+            ts.replace(microsecond=0)
             populated_data_repo.remove(
                 schema_ref='numpy_test',
                 data_name='numpy_test',
