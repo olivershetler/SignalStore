@@ -489,10 +489,10 @@ class MockDatetime:
     def now(self, *args, **kwargs):
         return self._now_time
 
-time_newest = datetime(2023, 5, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
-time_default = datetime(2023, 1, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
-time_old = datetime(1990, 1, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
-time_older = datetime(1975, 1, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
+time_newest = datetime(2023, 5, 1, 1, 1, 1, 1)
+time_default = datetime(2023, 1, 1, 1, 1, 1, 1)
+time_old = datetime(1990, 1, 1, 1, 1, 1, 1)
+time_older = datetime(1975, 1, 1, 1, 1, 1, 1)
 
 # Handlers
 
@@ -510,7 +510,4 @@ class MockDomainHandlerFactory:
     def create(self, handler_name, service_bundle=None, **kwargs):
         return MockHandler()
 
-# Persistent objects
-
-mock_object = MockObjectHelper("some_str")
 

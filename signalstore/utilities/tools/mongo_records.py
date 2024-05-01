@@ -10,7 +10,7 @@ def init_timestamps(struct):
     if not isinstance(struct, dict):
         return struct
     ret = copy.deepcopy(struct)
-    ret['time_of_save'] = datetime.now(timezone.utc)
+    ret['time_of_save'] = datetime.now().astimezone()
     ret['time_of_removal'] = None
     return ret
 

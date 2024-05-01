@@ -90,7 +90,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
                  client,
                  database_name: str,
                  collection_name: str,
-                 index_fields: list,
+                 index_fields: list
                  ):
         """Initializes the data Base MongoDB Data Access Object."""
         self._client = client # mongoDB client
@@ -117,6 +117,8 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         """
         self._check_kwargs_are_only_index_args(**kwargs)
         self._check_args(version_timestamp=version_timestamp,**kwargs)
+        if isinstance(version_timestamp, datetime):
+            version_timestamp = version_timestamp.astimezone(timezone.utc)
         document = self._collection.find_one(
             {
                 'time_of_removal': None,
@@ -153,9 +155,13 @@ class MongoDAO(AbstractQueriableDataAccessObject):
     def exists(self, version_timestamp=0, **kwargs):
         self._check_kwargs_are_only_index_args(**kwargs)
         self._check_args(**kwargs)
-        return self._collection.find_one({'time_of_removal': None,
-                                          'version_timestamp': version_timestamp,
-                                           **kwargs}) is not None
+        return self._collection.find_one(
+            {
+                'time_of_removal': None,
+                'version_timestamp': version_timestamp,
+                **kwargs
+                }
+            ) is not None
 
     def add(self, document, timestamp, versioning_on=False):
         """Adds a document to the repository.
@@ -334,7 +340,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         return {
             'time_of_save': datetime_to_microseconds,
             'time_of_removal': datetime_to_microseconds,
-            'version_timestamp': lambda x: 0 if x == 0 or x is None else x,
+            'version_timestamp': self._serialize_version_timestamp,
             'json_schema': dict_to_json_bytes,
         }
 
@@ -343,7 +349,7 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         return {
             'time_of_save': microseconds_to_datetime,
             'time_of_removal': microseconds_to_datetime,
-            'version_timestamp': lambda x: 0 if x == 0 or x is None else x.astimezone(timezone.utc),
+            'version_timestamp': self._deserialize_version_timestamp,
             'json_schema': json_bytes_to_dict,
         }
 
@@ -369,6 +375,28 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         for field in index_fields:
             if field not in self._argument_types:
                 self._argument_types[field] = (str) # only string type because they can never be None
+
+    def _serialize_version_timestamp(self, value):
+        if value == 0 or value is None:
+            return 0
+        else:
+            try:
+                return value
+            except AttributeError:
+                raise MongoDAOTypeError(
+                    f"Invalid type {type(value)} for argument version_timestamp. Must be of type {type(datetime.now(timezone.utc))}."
+                )
+
+    def _deserialize_version_timestamp(self, value):
+        if value == 0 or value is None:
+            return 0
+        else:
+            try:
+                return value
+            except AttributeError:
+                raise MongoDAOTypeError(
+                    f"Invalid type {type(value)} for argument version_timestamp. Must be of type {type(datetime.now(timezone.utc))}."
+                )
 
 # ===================
 
@@ -1023,7 +1051,7 @@ def datetime_to_microseconds(timestamp: datetime) -> int:
     elif timestamp == 0:
         return None
     try:
-        return int(timestamp.timestamp() * 1000000)
+        return int(timestamp.astimezone(timezone.utc).timestamp() * 1000000)
     except Exception as e:
         raise TypeError(f'Invalid type {type(timestamp)} for argument timestamp == {timestamp}. Must be datetime\n\ntraceback: {e}')
 
@@ -1039,7 +1067,7 @@ def microseconds_to_datetime(timestamp: int) -> datetime.utcnow:
     elif timestamp == 0:
         return 0
     try:
-        return datetime.fromtimestamp(timestamp / 1000000).astimezone(timezone.utc)
+        return datetime.fromtimestamp(float(timestamp) / 1000000, tz=timezone.utc)
     except Exception as e:
         raise TypeError(f'Invalid type {type(timestamp)} for argument timestamp = {timestamp}. Must be int\n\ntraceback: {e}')
 

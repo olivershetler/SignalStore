@@ -2,22 +2,25 @@
     {
         "data_name": "non_existing_schema_ref",
         "schema_ref": "does_not_exist",
-        "version_timestamp": "None",
+        "version_timestamp": 0,
         "has_data": false
     },
     {
         "data_name": "invalid_session_date",
         "schema_ref": "session",
+        "version_timestamp": 0,
         "has_file": false,
         "animal_data_ref": "test",
         "session_date": "incorrectly_formatted_date",
         "session_time": "12:00:00",
         "session_duration": "00:30:00",
         "session_notes": "This is a session record with an invalid session date"
+
     },
     {
         "data_name": "invalid_session_has_file",
         "schema_ref": "session",
+        "version_timestamp": 0,
         "has_file": true,
         "animal_data_ref": "test",
         "session_date": "2020-01-01",
@@ -28,6 +31,7 @@
     {
         "data_name": "invalid_spike_times_has_data_false",
         "schema_ref": "spike_times",
+        "version_timestamp": 0,
         "has_file": false,
         "data_dimensions": ["time", "probe", "channel"],
         "coordinates": ["time", "probe", "channel"],
@@ -41,6 +45,7 @@
     {
         "data_name": "invalid_spike_times_wrong_data_name",
         "schema_ref": "spike_times",
+        "version_timestamp": 0,
         "has_file": true,
         "data_dimensions": ["time", "probe", "channel"],
         "coordinates": ["time", "probe", "channel"],

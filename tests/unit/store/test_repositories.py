@@ -771,11 +771,11 @@ class TestDataRepository:
     def test_get_versioned_data_object_that_exists(self, populated_data_repo, timestamp, time_delta, model_numpy_adapter):
         vts = timestamp + timedelta(seconds=time_delta)
         data_object = populated_data_repo.get(schema_ref='numpy_test', data_name="numpy_test", version_timestamp=vts, data_adapter=model_numpy_adapter)
-        assert data_object.attrs['schema_ref'] == 'numpy_test'
-        assert data_object.attrs['data_name'] == 'numpy_test'
-        assert data_object.attrs['version_timestamp'] == vts
+        assert data_object.attrs['schema_ref'] == 'numpy_test', f"Should have returned a data object with argument schema_ref: numpy_test (time_delta: {time_delta}), but got {data_object.attrs['schema_ref']}"
+        assert data_object.attrs['data_name'] == 'numpy_test', f"Should have returned a data object with argument data_name: numpy_test (time_delta: {time_delta}), but got {data_object.attrs['data_name']}"
+        assert data_object.attrs['version_timestamp'] == vts, f"Should have returned a data object with argument version_timestamp: {vts} (timestamp: {timestamp}, time_delta: {time_delta}), but got {data_object.attrs['version_timestamp']}"
 
-    @pytest.mark.parametrize("kwargs", [{'schema_ref': 'session', 'data_name': 'invalid_session_date'}, {'schema_ref': 'session', 'data_name': 'invalid_session_has_file'}]) # ,{'schema_ref': 'does_not_exist', 'data_name': 'non_existing_schema_ref'}
+    @pytest.mark.parametrize("kwargs", [{'schema_ref': 'session', 'data_name': 'invalid_session_date'}, {'schema_ref': 'session', 'data_name': 'invalid_session_has_file'}])
     def test_get_unversioned_record_that_exists_but_is_invalid(self, populated_data_repo_with_invalid_records, kwargs):
         repo = populated_data_repo_with_invalid_records
         with pytest.raises(DataRepositoryValidationError):
@@ -995,8 +995,9 @@ class TestDataRepository:
     def test_remove_unversioned_data_array_that_exists(self, populated_data_repo):
         populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
 
-    def test_remove_versioned_data_object_that_exists(self, populated_data_repo, timestamp, model_numpy_adapter):
-        ts = timestamp + timedelta(seconds=1)
+    @pytest.mark.parametrize("delta", [s for s in range(1, 11)])
+    def test_remove_versioned_data_object_that_exists(self, populated_data_repo, timestamp, model_numpy_adapter, delta):
+        ts = timestamp + timedelta(seconds=delta)
         populated_data_repo.remove(
             schema_ref='numpy_test',
             data_name='numpy_test',
@@ -1114,20 +1115,21 @@ class TestDataRepository:
     def test_undo_removing_versioned_data_object_that_exists(self, populated_data_repo, timestamp, model_numpy_adapter):
         # remove a data array
         data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        data_array.attrs['data_name'] = 'test_undo_versioned_removing'
         populated_data_repo.add(data_array, versioning_on=True)
         # find the data array and get its timestamp
-        data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test'})[0]
+        data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test_undo_versioned_removing'})[0]
         vts = data_array_record['version_timestamp']
         # check that the data array exists
-        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
         # remove the data array
-        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts, data_adapter=model_numpy_adapter)
+        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts, data_adapter=model_numpy_adapter)
         # check that the data array does not exist
-        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
         # undo the remove
         populated_data_repo.undo()
         # confirm that the data array exists
-        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test', version_timestamp=vts)
+        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
 
     def test_undoing_a_change_that_does_not_exist(self, populated_data_repo):
         ohe = populated_data_repo.undo()
@@ -1139,7 +1141,7 @@ class TestDataRepository:
     # Test 1.1: undo all changes
     # Test 1.2: undo all changes when there are no changes to undo
 
-    def test_undo_all_changes(self, populated_data_repo, timestamp, model_numpy_adapter):
+    def test_undo_all_changes(self, populated_data_repo):
         # add a record
         record = populated_data_repo.get(schema_ref='animal', data_name='test', version_timestamp=0)
         record['data_name'] = 'test_undo_all'
@@ -1180,7 +1182,53 @@ class TestDataRepository:
     # Category 2: bad arguments
     # Test 2.1: time_threshold is not a datetime object (several tests / params) (error)
 
+    def test_list_marked_for_deletion_all(self, populated_data_repo, model_numpy_adapter, timestamp):
+        # mark records for deletion
+        for i in range(10):
+            ts = timestamp + timedelta(seconds=i)
+            records = populated_data_repo.find(filter={'schema_ref': 'numpy_test', 'data_name': 'numpy_test'})
+            assert any([r['version_timestamp'] == ts for r in records]), f"Should have found a record with version_timestamp: {[ts]}, but found only {[r['version_timestamp'] for r in records]}"
+            populated_data_repo.remove(
+                schema_ref='numpy_test',
+                data_name='numpy_test',
+                version_timestamp=ts,
+                data_adapter=model_numpy_adapter
+                )
+        marked_for_deletion = populated_data_repo.list_marked_for_deletion(time_threshold=None)
+        assert len(marked_for_deletion) == 10, f"Should have returned {10} data objects marked for deletion, but returned {len(marked_for_deletion)}"
 
+    @pytest.mark.skip()
+    @pytest.mark.parametrize("threshold_delta", range(1, 11))
+    def test_list_marked_for_deletion_after_time(self, populated_data_repo, model_numpy_adapter, timestamp, threshold_delta):
+        # mark records for deletion
+        for i in range(10):
+            ts = timestamp + timedelta(seconds=i)
+            populated_data_repo.remove(
+                schema_ref='numpy_test',
+                data_name='numpy_test',
+                version_timestamp=ts,
+                data_adapter=model_numpy_adapter
+                )
+        # get the time_threshold
+        time_threshold = timestamp + timedelta(seconds=threshold_delta)
+        marked_for_deletion = populated_data_repo.list_marked_for_deletion(time_threshold=time_threshold)
+        assert len(marked_for_deletion) == 10 - threshold_delta, f"Should have returned {10 - threshold_delta} data objects marked for deletion, but returned {len(marked_for_deletion)}"
 
+    def test_list_marked_for_deletion_all_when_there_are_no_data_objects_marked_for_deletion(self, populated_data_repo):
+        marked_for_deletion = populated_data_repo.list_marked_for_deletion(time_threshold=None)
+        assert len(marked_for_deletion) == 0, f"Should have returned an empty list, but returned {marked_for_deletion}"
 
+    @pytest.mark.parametrize("bad_time_threshold", [1, 1.0, [1,2,3], {"x",1,2}, ("a", "b", "c")])
+    def test_list_marked_for_deletion_with_bad_time_threshold(self, populated_data_repo, bad_time_threshold):
+        with pytest.raises(DataRepositoryTypeError):
+            populated_data_repo.list_marked_for_deletion(time_threshold=bad_time_threshold)
+            assert False, f"Should have raised an Exception for time_threshold: {bad_time_threshold}"
 
+    # test purge (test all expected behaviors of purge()) # purges marked for deletion data objects
+    # -----------------------------------------------------------------------------------------------
+    # Category 1: purge data objects that are marked for deletion
+    # Test 1.1: purge all data objects that are marked for deletion using time_threshold of None
+    # Test 1.2: purge data objects that are marked for deletion after a time using a time_threshold
+    # Test 1.3: purge all data objects that are marked for deletion using time_threshold of None when there are no data objects marked for deletion (empty list)
+    # Category 2: bad arguments
+    # Test 2.1: time_threshold is not a datetime object (several tests / params) (error)

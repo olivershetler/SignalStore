@@ -18,6 +18,7 @@ class UnitOfWorkProvider:
         self._filesystem = filesystem
         self._memory_store = memory_store
 
+
     def __call__(self, project_name):
         if not isinstance(project_name, str):
             raise ValueError("project_name must be a string")
@@ -29,10 +30,13 @@ class UnitOfWorkProvider:
         record_dao = MongoDAO(client=self._mongo_client,
                             database_name=project_name,
                             collection_name='records',
-                            index_fields=['schema_ref', 'data_name', 'version_timestamp'])
+                            index_fields=['schema_ref', 'data_name', 'version_timestamp']
+                            )
 
-        file_system_dao = FileSystemDAO(filesystem=self._filesystem,
-                                        project_dir=project_name)
+        file_system_dao = FileSystemDAO(
+            filesystem=self._filesystem,
+            project_dir=project_name
+            )
 
         in_memory_object_dao = InMemoryObjectDAO(memory_store=self._memory_store)
 

@@ -48,7 +48,10 @@ from datetime import datetime, timezone, timedelta
 
 @pytest.fixture
 def timestamp():
-    return datetime.now(tz=timezone.utc)
+    ts = datetime.now()
+    # convert to UTC
+    ts = ts.astimezone(timezone.utc)
+    return ts
 
 @pytest.fixture
 def project():
