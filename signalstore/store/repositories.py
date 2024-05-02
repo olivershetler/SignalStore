@@ -100,7 +100,10 @@ class OperationHistoryEntry:
             setattr(self, key, value)
 
     def __repr__(self):
-        return f"OperationHistoryEntry(timestamp={self.timestamp}, repository={self.repository}, operation={self.operation}, kwargs={self.kwargs})"
+        repstr = f"OperationHistoryEntry(timestamp={self.timestamp}, repository={self.collection_name}, operation={self.operation}"
+        for attr in self.__dict__:
+            if attr not in ["timestamp", "collection_name", "operation"]:
+                repstr += f", {attr}={getattr(self, attr)}"
 
     def __eq__(self, other):
         for attr in self.__dict__:
@@ -372,10 +375,10 @@ class DomainModelRepository(AbstractQueriableRepository):
         except Exception as e:
             raise DomainRepositoryUncaughtError(f"An uncaught error occurred while listing the terms marked for deletion.\n\nTraceback: {e}")
 
-    def purge(self):
+    def purge(self, time_threshold=None):
         """Purge (permanently delete) domain model objects marked for deletion."""
         try:
-            self._dao.purge()
+            self._dao.purge(time_threshold)
         except Exception as e:
             raise DomainRepositoryUncaughtError(f"An uncaught error occurred while purging the repository.\n\nTraceback: {e}")
 
@@ -541,7 +544,10 @@ class DataRepository(AbstractQueriableRepository):
             return records
 
     def exists(self, schema_ref, data_name, version_timestamp=0):
-        """Check if a record exists."""
+        """Check if a record exists.
+        Caveats:
+            Does not check if data files have been lost.
+            """
         self._check_args(
             schema_ref=schema_ref,
             data_name=data_name,
@@ -644,7 +650,7 @@ class DataRepository(AbstractQueriableRepository):
             version_timestamp=version_timestamp)
         if not self._records.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp):
             raise DataRepositoryNotFoundError(f"A record with schema_ref '{schema_ref}', data_name '{data_name}', and version_timestamp '{version_timestamp}' does not exist in the repository.")
-        has_file = self._data.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
+        has_file = self._data.exists(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, data_adapter=data_adapter)
 
         ohe = OperationHistoryEntry(
             self.timestamp(),
@@ -899,9 +905,9 @@ class InMemoryObjectRepository(AbstractRepository):
         """Clear the history of CRUD operations."""
         self._operation_history = []
 
-    def purge(self):
+    def purge(self, time_threshold=None):
         """Purge (permanently delete) objects marked for deletion."""
-        self._dao.purge()
+        self._dao.purge(time_threshold)
 
     def _validate(self, obj):
         """Validate a single object prior to adding it into the repository."""

@@ -74,6 +74,11 @@ class UnitOfWork:
         self._clear_operation_history()
         return operations
 
+    def purge(self, time_threshold=None):
+        self.domain_models.purge(time_threshold)
+        self.data.purge(time_threshold)
+        self.memory.purge(time_threshold)
+
     def _clear_operation_history(self):
         self.domain_models.clear_operation_history()
         self.data.clear_operation_history()
@@ -87,5 +92,6 @@ class UnitOfWork:
             'data': self.data._operation_history,
             'memory': self.memory._operation_history,
         }
+
 
 

@@ -1107,7 +1107,7 @@ class TestDataRepository:
         # confirm that the data array exists
         assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test')
 
-    def test_undo_removing_versioned_data_object_that_exists(self, populated_data_repo, timestamp, model_numpy_adapter):
+    def test_undo_removing_versioned_data_object_that_exists(self, populated_data_repo):
         # remove a data array
         data_array = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
         data_array.attrs['data_name'] = 'test_undo_versioned_removing'
@@ -1116,15 +1116,15 @@ class TestDataRepository:
         data_array_record = populated_data_repo.find(filter={'schema_ref': 'spike_waveforms', 'data_name': 'test_undo_versioned_removing'})[0]
         vts = data_array_record['version_timestamp']
         # check that the data array exists
-        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
+        assert populated_data_repo.get(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts) is not None
         # remove the data array
-        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts, data_adapter=model_numpy_adapter)
+        populated_data_repo.remove(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
         # check that the data array does not exist
-        assert not populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
+        assert populated_data_repo.get(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts) is None
         # undo the remove
         populated_data_repo.undo()
         # confirm that the data array exists
-        assert populated_data_repo.exists(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts)
+        assert populated_data_repo.get(schema_ref='spike_waveforms', data_name='test_undo_versioned_removing', version_timestamp=vts) is not None
 
     def test_undoing_a_change_that_does_not_exist(self, populated_data_repo):
         ohe = populated_data_repo.undo()
@@ -1186,12 +1186,14 @@ class TestDataRepository:
             upper = ts + margin
             records = populated_data_repo.find(filter={'schema_ref': 'numpy_test', 'data_name': 'numpy_test'})
             assert any([lower <= r['version_timestamp'] <= upper for r in records]), f"Should have found a record with version_timestamp: {[ts]}, but found only {[r['version_timestamp'] for r in records]}"
-            populated_data_repo.remove(
+            ohe = populated_data_repo.remove(
                 schema_ref='numpy_test',
                 data_name='numpy_test',
                 version_timestamp=ts,
                 data_adapter=model_numpy_adapter
                 )
+            assert ohe is not None, f"Should have returned an OperationHistoryEntry"
+            assert ohe.has_file == True, f"Should have returned an OperationHistoryEntry with has_file: True"
         marked_for_deletion = populated_data_repo.list_marked_for_deletion(time_threshold=None)
         assert len(marked_for_deletion) == 10, f"Should have returned {10} data objects marked for deletion, but returned {len(marked_for_deletion)}"
 
@@ -1231,3 +1233,17 @@ class TestDataRepository:
     # Test 1.3: purge all data objects that are marked for deletion using time_threshold of None when there are no data objects marked for deletion (empty list)
     # Category 2: bad arguments
     # Test 2.1: time_threshold is not a datetime object (several tests / params) (error)
+
+    def purge_all(self, populated_data_repo, model_numpy_adapter, timestamp):
+        # mark records for deletion
+        for i in range(1,11):
+            ts = timestamp + timedelta(seconds=i)
+            populated_data_repo.remove(
+                schema_ref='numpy_test',
+                data_name='numpy_test',
+                version_timestamp=ts,
+                data_adapter=model_numpy_adapter
+                )
+        # purge the data objects
+        purged = populated_data_repo.purge(time_threshold=None)
+        assert len(purged) == 10, f"Should have purged {10} data objects, but purged {len(purged)}"

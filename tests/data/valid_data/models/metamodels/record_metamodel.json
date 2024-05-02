@@ -1,7 +1,7 @@
 {
     "schema_name": "record_metamodel",
-    "schema_title": "Standalone Record Metamodel THIS METAMODEL IS INCOMPLETE JSON SCHEMA WILL APPROVE ANYTHING",
-    "schema_description": "A standalone record metamodel is a metamodel for how to describe a standalone record. A standalone record is a record that does not have any associated data. All standalone records have the schema_ref and data_name properties along with any other properties defined in a given model. The schema_ref property for a given model must match the same value as the schema_name property of the model.",
+    "schema_title": "Record Metamodel",
+    "schema_description": "A record metamodel is a metamodel that validates data models.",
     "schema_type": "metamodel",
     "json_schema": {
         "type": "object",
@@ -12,7 +12,55 @@
             "schema_type": {
                 "const": "data_model"
             },
-            "json_schema": {}
+            "json_schema": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "const": "object"
+                    },
+                    "properties": {
+                        "type": "object",
+                        "properties": {
+                            "schema_ref": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "const": "string"
+                                    }
+                                }
+                            },
+                            "data_name": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "const": "string"
+                                }
+                            },
+                            "version_timestamp": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "const": "array",
+                                        "items": {
+                                            "const": ["datetime", "integer"]
+                                    }
+                                }
+                            },
+                            "has_file": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "const": "boolean"
+                                    }
+                                }
+                            }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
+}
+

@@ -440,11 +440,25 @@ class FileSystemDAO(AbstractDataAccessObject):
         Returns:
             dict -- The object.
         """
-        self._check_args(schema_ref=schema_ref,
-                         data_name=data_name,
-                         nth_most_recent=nth_most_recent,
-                         version_timestamp=version_timestamp,
-                         data_adapter=data_adapter)
+        self._check_args(
+            schema_ref=schema_ref,
+            data_name=data_name,
+            nth_most_recent=nth_most_recent,
+            version_timestamp=version_timestamp,
+            data_adapter=data_adapter
+            )
+        if data_adapter is None:
+            data_adapter = self._default_data_adapter
+        else:
+            data_adapter.set_filesystem(self._fs)
+        path = self._get_file_path(schema_ref, data_name, version_timestamp, nth_most_recent, data_adapter)
+        if path is None:
+            return None
+        data_object = data_adapter.read_file(path)
+        data_object = self._deserialize(data_object)
+        return data_object
+
+    def _get_file_path(self, schema_ref, data_name, version_timestamp, nth_most_recent, data_adapter):
         if data_adapter is None:
             data_adapter = self._default_data_adapter
         else:
@@ -463,7 +477,7 @@ class FileSystemDAO(AbstractDataAccessObject):
                 # sort by version
                 paths.sort()
                 if len(glob) == 0:
-                    wrong_file_pattern = pattern = self._directory + '/' + self.make_base_filename(schema_ref, data_name) + f'__version_{ms_vts}[0-9][0-9][0-9]*'
+                    wrong_file_pattern = self._directory + '/' + self.make_base_filename(schema_ref, data_name) + f'__version_{ms_vts}[0-9][0-9][0-9]*'
                     wrong_file_glob = self._fs.glob(wrong_file_pattern)
                     bad_paths = list(filter(lambda path: '_time_of_removal_' not in path, wrong_file_glob))
                     if len(bad_paths) == 0:
@@ -491,9 +505,7 @@ class FileSystemDAO(AbstractDataAccessObject):
                         path = paths[-nth_most_recent]
                     except IndexError:
                         return None
-        data_object = data_adapter.read_file(path)
-        data_object = self._deserialize(data_object)
-        return data_object
+        return path
 
     def exists(self, schema_ref, data_name, version_timestamp=0, data_adapter=None):
         """Checks if an object exists in the repository.
@@ -505,8 +517,13 @@ class FileSystemDAO(AbstractDataAccessObject):
             bool -- True if the object exists, else False.
         """
         self._check_args(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp, data_adapter=data_adapter)
-        path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
-        return self._fs.exists(path)
+        # try getting the object
+        try:
+            return self.get(schema_ref, data_name, version_timestamp, data_adapter=data_adapter) is not None
+        except FileSystemDAOFileNotFoundError as e:
+            raise FileSystemDAOFileNotFoundError(
+                f"An error occurred while checking if the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} exists in the repository. Traceback was: {traceback.format_exc()}"
+            )
 
     def n_versions(self, schema_ref, data_name):
         """Returns the number of versions of an object in the repository."""
@@ -575,27 +592,35 @@ class FileSystemDAO(AbstractDataAccessObject):
                          data_name=data_name,
                          version_timestamp=version_timestamp,
                          data_adapter=data_adapter)
-        if not self.exists(schema_ref, data_name, version_timestamp, data_adapter):
+        if data_adapter is None:
+            data_adapter = self._default_data_adapter
+        else:
+            data_adapter.set_filesystem(self._fs)
+        path = self._get_file_path(schema_ref, data_name, version_timestamp, 1, data_adapter)
+        if path is None:
             raise FileSystemDAOFileNotFoundError(
                     f'Cannot remove object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} because it does not exist in repository. The path would have been {self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)} if this error had not occurred. The exists method returned False.'
             )
-        old_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter)
-        new_path = self.make_filepath(schema_ref, data_name, version_timestamp, data_adapter, time_of_removal)
+        # insert __time_of_removal_{time_of_removal} into the filename before the file extension
+        if not data_adapter.file_extension == '':
+            new_path = path.replace(data_adapter.file_extension, f'__time_of_removal_{datetime_to_microseconds(time_of_removal)}{data_adapter.file_extension}')
+        else:
+            new_path = path + f'__time_of_removal_{datetime_to_microseconds(time_of_removal)}'
         if self._fs.exists(new_path):
             raise FileSystemDAOFileAlreadyExistsError(
                 f'Cannot mark object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion because the path {new_path} already exists in repository. The time_of_removal may need to be updated to a more recent time.'
             )
         # check if path is file or directory
         try:
-            self._fs.mv(path1=str(old_path), path2=str(new_path), recursive=True)
+            self._fs.mv(path1=str(path), path2=str(new_path), recursive=True)
         except Exception as e:
             trace = traceback.format_exc()
             raise FileSystemDAOUncaughtError(
-                f'An error occurred while renaming the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion. The old path was {old_path} and the new (trash) path was going to be {new_path} The error was: {e} and the traceback was \n\n{trace}'
+                f'An error occurred while renaming the object with schema_ref: {schema_ref}, data_name: {data_name}, and version_timestamp: {version_timestamp} as marked for deletion. The old path was {path} and the new (trash) path was going to be {new_path} The error was: {e} and the traceback was \n\n{trace}'
             )
         return None
 
-    def list_marked_for_deletion(self, time_threshold=None, data_adapter=None):
+    def list_marked_for_deletion(self, time_threshold=None):
         """Returns a list of all deleted objects from the repository.
         Arguments:
             time_threshold {datetime.timestamp} -- The time threshold.
@@ -605,11 +630,8 @@ class FileSystemDAO(AbstractDataAccessObject):
         """
         self._check_args(
             time_threshold=time_threshold,
-            data_adapter=data_adapter
             )
-        if data_adapter is None:
-            data_adapter = self._default_data_adapter
-        glob_pattern = self._directory + '/*_time_of_removal_*' + data_adapter.file_extension
+        glob_pattern = self._directory + '/*_time_of_removal_*'
         paths = self._fs.glob(glob_pattern)
         if time_threshold is None:
             result = list(paths)
@@ -681,7 +703,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             )
         return None
 
-    def purge(self, time_threshold=None, data_adapter=None):
+    def purge(self, time_threshold=None):
         """Purges deleted objects from the repository older than the time threshold.
         Arguments:
             schema_ref {str} -- The type of object to purge.
@@ -692,7 +714,7 @@ class FileSystemDAO(AbstractDataAccessObject):
             None
         """
         self._check_args(time_threshold=time_threshold)
-        paths = self.list_marked_for_deletion(time_threshold, data_adapter)
+        paths = self.list_marked_for_deletion(time_threshold)
         count = len(paths)
         for path in paths:
             self._fs.rm(path, recursive=True)

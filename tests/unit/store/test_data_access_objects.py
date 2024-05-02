@@ -762,13 +762,6 @@ class TestFileSystemDAO:
         with pytest.raises(FileSystemDAOTypeError):
             file_dao.list_marked_for_deletion(time_threshold=bad_arg)
 
-    @pytest.mark.parametrize('file_type', ['netcdf', 'zarr', 'numpy'])
-    @pytest.mark.parametrize('bad_arg', [1.5, 1, datetime.now().astimezone(), "string", {"set"}, {"hash": "map"}])
-    def test_list_marked_for_deletion_with_bad_data_adapter_arg(self, file_dao_options, file_type, bad_arg):
-        file_dao = file_dao_options[file_type]
-        with pytest.raises(FileSystemDAOTypeError):
-            file_dao.list_marked_for_deletion(data_adapter=bad_arg)
-
     # restore tests (test all expected behaviors of restore())
     # ---------------------------------------------------------
     # Category 1: Unversioned files that exist and have been removed
