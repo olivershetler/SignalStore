@@ -608,6 +608,8 @@ class DataRepository(AbstractQueriableRepository):
                 version_timestamp=object["version_timestamp"],
                 data_adapter = None,
                 has_file = False)
+        if object.get("has_file") is None:
+            object['has_file'] = False
         self._validate(object)
         self._records.add(
                     document=object,
@@ -629,6 +631,8 @@ class DataRepository(AbstractQueriableRepository):
             data_adapter = data_adapter,
             version_timestamp=object.attrs["version_timestamp"]
             )
+        if object.attrs.get("has_file") is None:
+            object.attrs["has_file"] = True
         self._validate(object.attrs)
         self._records.add(
             document=object.attrs,

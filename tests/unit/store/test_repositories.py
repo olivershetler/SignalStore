@@ -841,7 +841,7 @@ class TestDataRepository:
             populated_data_repo.exists(schema_ref='does_not_exist', data_name=bad_data_name, version_timestamp=0)
             assert False, f"Should have raised a TypeError for data_name: {bad_data_name}"
 
-    # find tests (test all expected behaviors of find())
+    # `find` tests (test all expected behaviors of find())
     # --------------------------------------------------
     # Category 1: find a data object that exists
     # Test 1.1: find an unversioned record data objects (has_file=False) that exist
@@ -905,10 +905,14 @@ class TestDataRepository:
     # Test 1.1: add a valid unversioned record data object (has_file=False)
     # Test 1.2: add a valid unversioned data array object (has_file=True)
     # Test 1.3: add a valid versioned data object
+    # Test 1.4: add a file data object that has no has_file attribute (it should be added and set to True)
+    # Test 1.5: add a record data object that has no has_file attribute (it should be added and set to False)
     # Category 2: add a data object that is invalid (error)
     # Test 2.1: add an invalid unversioned record data object (has_file=False)
     # Test 2.2: add an invalid unversioned data array object (has_file=True)
     # Test 2.3: add an invalid versioned data object
+    # Test 2.4: add a file data object that with has_file=False (error)
+    # Test 2.5: add a record data object that with has_file=True (error)
     # Category 3: bad arguments
     # Test 3.1: add a data object with a bad data_object argument (error)
     # Test 3.2: add a data object with a bad schema_ref argument (error)
@@ -945,6 +949,35 @@ class TestDataRepository:
         populated_data_repo.add(data_object, versioning_on=True)
         sleep(0.001)
 
+    def test_add_file_data_object_that_has_no_has_file_attribute(self, populated_data_repo):
+        data_object = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        # change data_name
+        data_object.attrs['data_name'] = 'test_add'
+        # remove has_file attribute
+        del data_object.attrs['has_file']
+        populated_data_repo.add(data_object, versioning_on=False)
+        # get the data object that was just added
+        data_object = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test_add', version_timestamp=0)
+        assert data_object is not None
+        has_file = data_object.attrs.get('has_file')
+        assert has_file is not None
+        assert has_file == True
+
+    def test_add_record_data_object_that_has_no_has_file_attribute(self, populated_data_repo):
+        data_object = populated_data_repo.get(schema_ref='animal', data_name='test', version_timestamp=0)
+        # change data_name
+        data_object['data_name'] = 'test_add'
+        # remove has_file attribute
+        del data_object['has_file']
+        populated_data_repo.add(data_object, versioning_on=False)
+        # get the data object that was just added
+        data_object = populated_data_repo.get(schema_ref='animal', data_name='test_add', version_timestamp=0)
+        assert data_object is not None
+        has_file = data_object.get('has_file')
+        assert has_file is not None
+        assert has_file == False
+
+
     def test_add_unversioned_record_that_is_invalid(self, populated_data_repo):
         session_record = populated_data_repo.get(schema_ref='session', data_name='test', version_timestamp=0)
         session_record['data_name'] = 'test_add_bad'
@@ -974,6 +1007,31 @@ class TestDataRepository:
         with pytest.raises(DataRepositoryTypeError):
             populated_data_repo.add(bad_data_object, versioning_on=False)
             assert False, f"Should have raised a TypeError for data_object: {bad_data_object}"
+
+    def test_add_xarray_with_false_has_file(self, populated_data_repo):
+        data_object = populated_data_repo.get(schema_ref='spike_waveforms', data_name='test', version_timestamp=0)
+        # check that the data object is an xarray DataArray
+        assert isinstance(data_object, xr.DataArray)
+        # change data_name to new_test
+        data_object.attrs['schema_ref'] = 'new_test'
+        # change has_file to False
+        data_object.attrs['has_file'] = False
+        with pytest.raises(DataRepositoryValidationError):
+            populated_data_repo.add(data_object, versioning_on=False)
+            assert False, f"Should have raised a DataRepositoryValidationError for data_object: {data_object}"
+
+    def test_add_dict_with_true_has_file(self, populated_data_repo):
+        data_object = populated_data_repo.get(schema_ref='animal', data_name='test', version_timestamp=0)
+        # check that the data object is a dictionary
+        assert isinstance(data_object, dict)
+        # change data_name to new_test
+        data_object['data_name'] = 'new_test'
+        # change has_file to True
+        data_object['has_file'] = True
+        with pytest.raises(DataRepositoryValidationError):
+            populated_data_repo.add(data_object, versioning_on=False)
+            assert False, f"Should have raised a DataRepositoryValidationError for data_object: {data_object}"
+
 
     # remove tests (test all expected behaviors of remove())
     # -----------------------------------------------------
