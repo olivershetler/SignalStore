@@ -6,11 +6,11 @@ SignalStore is a Python package for storing and retrieving large labeled data ar
 
 ## Installation
 
-Use pip to install the package:
+Provisional pre-release installation:
 
-```
-pip install signalstore
-```
+To install the pre-release, clone this repository into your project directory and use `pip install -e .`.
+
+To update the package, cd into the sub-repository and use `git pull`, then cd into the main repository and `pip install -e .` again.
 
 ## Usage
 
@@ -69,4 +69,4 @@ This is because of the xarray function "is_list_of_strings" that requires the ex
 
 MongoDB stores datetime objects as UTC, so when you query for a datetime object, you need to convert it to UTC first.
 
-MongoDB stores datetime objects at millisecond precision. You can use a more precise datetime object for queries, but it will be truncated to millisecond precision. You will not get an exact match if you assert that the original datetime object is equal to the one stored in the database. For speed, the filesystem stores time_of_removal and version_timestamp as microsecond precision integers in filenames, but the metadata in MongoDB is stored as millisecond precision datetime objects. Use full precision for queries to get the right results, but beware that adding to MongoDB and getting back from MongoDB will truncate the precision to milliseconds. 
+MongoDB stores datetime objects at millisecond precision. You can use a more precise datetime object for queries, but it will be truncated to millisecond precision. You will not get an exact match if you assert that the original datetime object is equal to the one stored in the database. For speed, the filesystem stores time_of_removal and version_timestamp as microsecond precision integers in filenames, but the metadata in MongoDB is stored as millisecond precision datetime objects. Use full precision for queries to get the right results, but beware that adding to MongoDB and getting back from MongoDB will truncate the precision to milliseconds.
