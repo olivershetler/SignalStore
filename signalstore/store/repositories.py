@@ -474,7 +474,8 @@ class DataRepository(AbstractQueriableRepository):
         self._operation_history = []
         self._validator = CustomValidator
 
-    def get(self, schema_ref, data_name, nth_most_recent=None, version_timestamp=0, data_adapter=None):
+
+    def get(self, schema_ref, data_name, nth_most_recent=None, version_timestamp=0, data_adapter=None, validate=True):
         """Get a single record."""
         # if argument is a dict, try unpacking it
         if not nth_most_recent is None and nth_most_recent < 1:
@@ -491,7 +492,8 @@ class DataRepository(AbstractQueriableRepository):
             record = self._records.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
         if record is None:
             return None
-        self._validate(record)
+        if validate:
+            self._validate(record)
         has_file = record.get("has_file")
         if has_file:
             data = self._data.get(
@@ -512,7 +514,7 @@ class DataRepository(AbstractQueriableRepository):
         else:
             return record
 
-    def find(self, filter=None, projection=None, sort=None, limit=None, get_data=False):
+    def find(self, filter=None, projection=None, sort=None, limit=None, get_data=False, validate=True):
         """Apply filtering to get multiple records fitting a description."""
         self._check_args(
             filter=filter,
@@ -526,8 +528,9 @@ class DataRepository(AbstractQueriableRepository):
         else:
             records = self._records.find(filter=filter, projection=projection)
         # validate the records
-        for record in records:
-            self._validate(record)
+        if validate:
+            for record in records:
+                self._validate(record)
         if get_data:
             data = []
             for record in records:
