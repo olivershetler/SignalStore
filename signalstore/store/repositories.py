@@ -542,7 +542,7 @@ class DataRepository(AbstractQueriableRepository):
                     data.append(data_object)
                 else:
                     data.append(record)
-                return data
+            return data
         else:
             return records
 
