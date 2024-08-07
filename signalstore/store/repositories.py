@@ -541,7 +541,7 @@ class DataRepository(AbstractQueriableRepository):
                     data_object = self._data.get(schema_ref=schema_ref, data_name=data_name, version_timestamp=version_timestamp)
                     data.append(data_object)
                 else:
-                    data.append(None)
+                    data.append(record)
                 return data
         else:
             return records
