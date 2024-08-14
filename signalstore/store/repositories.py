@@ -7,6 +7,7 @@ import jsonschema
 import json
 from datetime import datetime
 from time import sleep
+from concurrent.futures import ThreadPoolExecutor
 
 
 # ================================
@@ -297,6 +298,7 @@ class DomainModelRepository(AbstractQueriableRepository):
         self._check_args(filter=filter, projection=projection)
         models = self._dao.find(filter=filter, projection=projection, **kwargs)
         # validate the models
+
         for model in models:
             self._validate(model)
         # return the models
@@ -769,7 +771,7 @@ class DataRepository(AbstractQueriableRepository):
             raise DataRepositoryValidationError(message)
         # if the record has passed overall validation, then check that each property is valid
         # each property should have a corresponding domain model with the same schema_name as the property name
-        for property_name, value in record.items():
+        def validate_property(property_name, value):
             # special case: if the property name ends with "_data_ref", then we use the "data_ref" domain property model
             # we do not expect a specific for each *_data_ref property name
             if property_name.endswith("_data_ref"):
@@ -786,6 +788,8 @@ class DataRepository(AbstractQueriableRepository):
             except jsonschema.exceptions.ValidationError as e:
                 message = self._validation_error_message(e, record, property_json_schema, property_name)
                 raise DataRepositoryValidationError(message)
+        for key, value in record.items():
+            validate_property(key, value)
 
     def _check_args(self, **kwargs):
         for key, value in kwargs.items():

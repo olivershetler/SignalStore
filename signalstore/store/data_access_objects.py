@@ -11,6 +11,7 @@ import xarray as xr
 from signalstore.store.store_errors import *
 
 from signalstore.store.datafile_adapters import AbstractDataFileAdapter, XarrayDataArrayNetCDFAdapter
+from concurrent.futures import ThreadPoolExecutor
 
 class AbstractDataAccessObject(ABC):
 
@@ -146,7 +147,9 @@ class MongoDAO(AbstractQueriableDataAccessObject):
         else:
             projection = projection.copy() # avoid mutations to the input dict
             projection['_id'] = 0
-        documents = [self._deserialize(document) for document in self._collection.find(filter, projection, **kwargs)]
+
+        with ThreadPoolExecutor() as executor:
+            documents = list(executor.map(self._deserialize, self._collection.find(filter, projection, **kwargs)))
         return documents
 
     def exists(self, version_timestamp=0, **kwargs):
