@@ -10,14 +10,25 @@ from signalstore.store.repositories import (
     InMemoryObjectRepository
 )
 
+from signalstore.store.datafile_adapters import (
+    AbstractDataFileAdapter,
+    XarrayDataArrayNetCDFAdapter,
+    XarrayDataArrayZarrAdapter
+)
+
+
 from signalstore.store.unit_of_work import UnitOfWork
 
 class UnitOfWorkProvider:
-    def __init__(self, mongo_client, filesystem, memory_store):
+    def __init__(self, mongo_client, filesystem, memory_store, default_filetype='netcdf'):
         self._mongo_client = mongo_client
         self._filesystem = filesystem
         self._memory_store = memory_store
-
+        self._default_file_type = 'netcdf'
+        self._file_adapter_options = {
+            'netcdf': XarrayDataArrayNetCDFAdapter(),
+            'zarr': XarrayDataArrayZarrAdapter()
+        }
 
     def __call__(self, project_name):
         if not isinstance(project_name, str):
@@ -35,7 +46,8 @@ class UnitOfWorkProvider:
 
         file_system_dao = FileSystemDAO(
             filesystem=self._filesystem,
-            project_dir=project_name
+            project_dir=project_name,
+            default_data_adapter=self._file_adapter_options[self._default_file_type]
             )
 
         in_memory_object_dao = InMemoryObjectDAO(memory_store=self._memory_store)
