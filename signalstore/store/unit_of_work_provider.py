@@ -24,7 +24,7 @@ class UnitOfWorkProvider:
         self._mongo_client = mongo_client
         self._filesystem = filesystem
         self._memory_store = memory_store
-        self._default_file_type = 'netcdf'
+        self._default_file_type = default_filetype
         self._file_adapter_options = {
             'netcdf': XarrayDataArrayNetCDFAdapter(),
             'zarr': XarrayDataArrayZarrAdapter()
