@@ -564,10 +564,17 @@ class FileSystemDAO(AbstractDataAccessObject):
             data_object.attrs['version_timestamp'] = 0
         idkwargs = data_adapter.get_id_kwargs(data_object) # (schema_ref, data_name, version_timestamp)
         path = self.make_filepath(**idkwargs, data_adapter=data_adapter)
-        if self.exists(**idkwargs, data_adapter=data_adapter):
-            raise FileSystemDAOFileAlreadyExistsError(
-                f'Cannot add object with path "{path}" because it already exists in repository.'
-            )
+
+        # hack to bypass current issue with exists function
+        try:
+            if self.exists(**idkwargs, data_adapter=data_adapter):
+                print(f'Skipping object with path "{path}" because it already exists in repository.')
+                return None
+                # raise FileSystemDAOFileAlreadyExistsError(
+                #     f'Cannot add object with path "{path}" because it already exists in repository.'
+                # )
+        except: 
+            pass
         data_object = self._serialize(data_object)
         #get os environment variable 'DEBUG' to check if we should print the data_object
         data_adapter.write_file(path=path, data_object=data_object)
