@@ -4,6 +4,10 @@
 
 SignalStore is a Python package for storing and retrieving large labeled data arrays using MongoDB and xarray compatible formats such as netCDF4 and Zarr. It also has a framework for accomodating data adapters for arbitrary formats such as PyTorch model weights, NumPy arrays, and pandas DataFrames. It is designed to be used as a cloud-agnostic common library for dockerized data analysis micro-services. To use the package, you need a MongoDB client and a fsspec FileSystem object (compatible with all local filesystems, Google Cloud, Amazon Web Services, etc.).
 
+## Cite
+
+[![DOI](https://zenodo.org/badge/788602046.svg)](https://doi.org/10.5281/zenodo.13958872)
+
 ## Installation
 
 Provisional pre-release installation:
